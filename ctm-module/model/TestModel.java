@@ -1,14 +1,12 @@
-import java.time.LocalDate;
+import java.util.List;
 
 public class TestModel {
     public static void main(String[] args) {
 
-        Task t1 = new Task("1", "Complete Report", "Finish DAA report", LocalDate.now().plusDays(2));
+        List<Task> tasks = MockDataService.getSampleTasks();
 
-        System.out.println(t1.getDetails());
-
-        t1.markComplete();
-
-        System.out.println("After completion: " + t1.getDetails());
+        for (Task t : tasks) {
+            System.out.println(t.getDetails());
+        }
     }
 }

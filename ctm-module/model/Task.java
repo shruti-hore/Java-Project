@@ -1,5 +1,7 @@
 import java.time.LocalDate;
 
+import ctm-module.model.ProjectItem;
+
 public class Task extends ProjectItem {
 
     private String description;
@@ -32,5 +34,9 @@ public class Task extends ProjectItem {
     @Override
     public String getDetails() {
         return title + " | Due: " + deadline + " | Done: " + isCompleted;
+    }
+
+    public void updateStatus(boolean status) {
+        this.isCompleted = status;
     }
 }
