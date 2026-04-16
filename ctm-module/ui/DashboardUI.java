@@ -1,3 +1,5 @@
+package ui;
+
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -5,6 +7,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
 import javafx.scene.layout.VBox;
+
+// to compile and run:
+// java --module-path "C:\javafx-sdk-26\lib" --add-modules javafx.controls,javafx.fxml ui.DashboardUI
 
 public class DashboardUI extends Application {
 
