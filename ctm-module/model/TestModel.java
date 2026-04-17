@@ -1,9 +1,9 @@
-import java.time.LocalDate;
+package model;
 
 public class TestModel {
     public static void main(String[] args) {
 
-        Task t1 = new Task("1", "Test Task", "Check model", LocalDate.now());
+        Task t1 = new Task("Test Task", "20 Apr", false);
 
         System.out.println(t1.getDetails());
 

@@ -1,42 +1,22 @@
-import java.time.LocalDate;
+package model;
 
-import ctm-module.model.ProjectItem;
+public class Task {
 
-public class Task extends ProjectItem {
-
-    private String description;
+    private String title;
+    private String deadline;
     private boolean isCompleted;
-    private LocalDate deadline;
 
-    public Task(String id, String title, String description, LocalDate deadline) {
-        super(id, title);
-        this.description = description;
+    public Task(String title, String deadline, boolean isCompleted) {
+        this.title = title;
         this.deadline = deadline;
-        this.isCompleted = false;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public boolean isCompleted() {
-        return isCompleted;
-    }
-
-    public LocalDate getDeadline() {
-        return deadline;
+        this.isCompleted = isCompleted;
     }
 
     public void markComplete() {
         this.isCompleted = true;
     }
 
-    @Override
     public String getDetails() {
         return title + " | Due: " + deadline + " | Done: " + isCompleted;
-    }
-
-    public void updateStatus(boolean status) {
-        this.isCompleted = status;
     }
 }

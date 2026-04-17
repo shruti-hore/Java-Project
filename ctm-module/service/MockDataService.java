@@ -1,17 +1,18 @@
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+package service;
+
+import java.util.*;
+import model.Task;
 
 public class MockDataService {
 
     public static List<Task> getSampleTasks() {
 
-        List<Task> tasks = new ArrayList<>();
+        List<Task> list = new ArrayList<>();
 
-        tasks.add(new Task("1", "Design UI", "Create dashboard layout", LocalDate.now().plusDays(2)));
-        tasks.add(new Task("2", "Implement Backend", "Setup Spring Boot APIs", LocalDate.now().plusDays(5)));
-        tasks.add(new Task("3", "Testing", "Perform integration testing", LocalDate.now().plusDays(7)));
+        list.add(new Task("Complete JavaFX UI", "20 Apr", false));
+        list.add(new Task("Study DSA", "22 Apr", false));
+        list.add(new Task("Submit Assignment", "25 Apr", true));
 
-        return tasks;
+        return list;
     }
 }
