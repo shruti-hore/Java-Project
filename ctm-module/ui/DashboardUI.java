@@ -2,32 +2,62 @@
 // run : java --module-path "C:\javafx-sdk-26\lib" --add-modules javafx.controls,javafx.fxml ui.DashboardUI
 
 package ui;
-import model.Task;
-import service.MockDataService;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.BorderPane;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
-import javafx.scene.layout.VBox;
-import javafx.scene.control.ScrollPane;
 
 import java.util.List;
+import java.util.ArrayList;
+
+import model.Task;
+import service.MockDataService;
 
 public class DashboardUI extends Application {
+
+    private VBox taskContainer;
+    private List<Task> taskList;
 
     @Override
     public void start(Stage stage) {
 
-        // top
+        // ================= DATA =================
+        taskList = new ArrayList<>(MockDataService.getSampleTasks());
+
+        // ================= TITLE =================
         Label title = new Label("Secure Task Manager Dashboard");
 
-        VBox topBox = new VBox(title);
+        // ================= INPUT FIELDS =================
+        TextField titleInput = new TextField();
+        titleInput.setPromptText("Task Title");
+
+        TextField deadlineInput = new TextField();
+        deadlineInput.setPromptText("Deadline");
+
+        Button addBtn = new Button("➕ Add Task");
+
+        addBtn.setOnAction(e -> {
+            String t = titleInput.getText();
+            String d = deadlineInput.getText();
+
+            if (!t.isEmpty() && !d.isEmpty()) {
+                taskList.add(new Task(t, d, false));
+                titleInput.clear();
+                deadlineInput.clear();
+                refreshTasks();
+            }
+        });
+
+        HBox inputBox = new HBox(10, titleInput, deadlineInput, addBtn);
+        inputBox.setAlignment(Pos.CENTER);
+
+        VBox topBox = new VBox(10, title, inputBox);
         topBox.setAlignment(Pos.CENTER);
 
-        // side bar
+        // ================= SIDEBAR =================
         VBox sidebar = new VBox(10);
         sidebar.getChildren().addAll(
             new Label("All Tasks"),
@@ -35,25 +65,18 @@ public class DashboardUI extends Application {
             new Label("Pending")
         );
 
-        // center (task list)
-        VBox taskContainer = new VBox(10);
-
-        List<Task> tasks = MockDataService.getSampleTasks();
-
-        for (Task t : tasks) {
-            Label taskLabel = new Label(t.getDetails());
-            taskContainer.getChildren().add(taskLabel);
-        }
+        // ================= TASK AREA =================
+        taskContainer = new VBox(10);
+        refreshTasks();
 
         ScrollPane scrollPane = new ScrollPane(taskContainer);
         scrollPane.setFitToWidth(true);
 
-        // root
+        // ================= ROOT =================
         BorderPane root = new BorderPane();
         root.setTop(topBox);
         root.setLeft(sidebar);
         root.setCenter(scrollPane);
-
         root.setStyle("-fx-padding: 20;");
 
         Scene scene = new Scene(root, 800, 600);
@@ -61,6 +84,33 @@ public class DashboardUI extends Application {
         stage.setTitle("CTM Dashboard");
         stage.setScene(scene);
         stage.show();
+    }
+
+    // ================= REFRESH =================
+    private void refreshTasks() {
+
+        taskContainer.getChildren().clear();
+
+        for (Task t : taskList) {
+
+            Label taskLabel = new Label(t.getDetails());
+
+            Button completeBtn = new Button("✔ Complete");
+            Button deleteBtn = new Button("❌ Delete");
+
+            completeBtn.setOnAction(e -> {
+                t.markComplete();
+                refreshTasks();
+            });
+
+            deleteBtn.setOnAction(e -> {
+                taskList.remove(t);
+                refreshTasks();
+            });
+
+            HBox row = new HBox(10, taskLabel, completeBtn, deleteBtn);
+            taskContainer.getChildren().add(row);
+        }
     }
 
     public static void main(String[] args) {
