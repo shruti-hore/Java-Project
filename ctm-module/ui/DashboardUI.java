@@ -5,10 +5,7 @@ package ui;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
@@ -23,6 +20,7 @@ public class DashboardUI extends Application {
 
     private VBox taskContainer;
     private List<Task> taskList;
+    private String currentFilter = "ALL";
 
     @Override
     public void start(Stage stage) {
@@ -37,21 +35,42 @@ public class DashboardUI extends Application {
         TextField titleInput = new TextField();
         titleInput.setPromptText("Task Title");
 
-        TextField deadlineInput = new TextField();
-        deadlineInput.setPromptText("Deadline");
+        // Updated: Using DatePicker instead of TextField to avoid invalid date input
+        DatePicker deadlineInput = new DatePicker();
 
-        Button addBtn = new Button("➕ Add Task");
+        // Updated: Disable past dates in calendar UI
+        deadlineInput.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(java.time.LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.isBefore(java.time.LocalDate.now()));
+            }
+        });
 
+        Button addBtn = new Button("Add Task");
+
+        // Updated: Validation + popup alerts
         addBtn.setOnAction(e -> {
             String t = titleInput.getText();
-            String d = deadlineInput.getText();
 
-            if (!t.isEmpty() && !d.isEmpty()) {
-                taskList.add(new Task(t, d, false));
-                titleInput.clear();
-                deadlineInput.clear();
-                refreshTasks();
+            // Check empty title or no date selected
+            if (t.isEmpty() || deadlineInput.getValue() == null) {
+                showError("Please enter task title and select a valid date.");
+                return;
             }
+
+            // Check if selected date is in the past
+            if (deadlineInput.getValue().isBefore(java.time.LocalDate.now())) {
+                showError("Deadline cannot be in the past.");
+                return;
+            }
+
+            String d = deadlineInput.getValue().toString();
+
+            taskList.add(new Task(t, d, false));
+            titleInput.clear();
+            deadlineInput.setValue(null);
+            refreshTasks();
         });
 
         HBox inputBox = new HBox(10, titleInput, deadlineInput, addBtn);
@@ -61,12 +80,28 @@ public class DashboardUI extends Application {
         topBox.setAlignment(Pos.CENTER);
 
         // ================= SIDEBAR =================
-        VBox sidebar = new VBox(10);
-        sidebar.getChildren().addAll(
-            new Label("All Tasks"),
-            new Label("Completed"),
-            new Label("Pending")
-        );
+        Label allTasks = new Label("All Tasks");
+        Label completed = new Label("Completed");
+        Label pending = new Label("Pending");
+
+        allTasks.setOnMouseClicked(e -> {
+            currentFilter = "ALL";
+            refreshTasks();
+        });
+
+        completed.setOnMouseClicked(e -> {
+            currentFilter = "COMPLETED";
+            refreshTasks();
+        });
+
+        pending.setOnMouseClicked(e -> {
+            currentFilter = "PENDING";
+            refreshTasks();
+        });
+
+        VBox sidebar = new VBox(10, allTasks, completed, pending);
+        sidebar.setPrefWidth(150);
+        sidebar.setStyle("-fx-padding: 10; -fx-background-color: #eeeeee;");
 
         // ================= TASK AREA =================
         taskContainer = new VBox(10);
@@ -93,53 +128,63 @@ public class DashboardUI extends Application {
     // ================= REFRESH =================
     private void refreshTasks() {
 
-    taskContainer.getChildren().clear();
+        taskContainer.getChildren().clear();
 
-    for (Task t : taskList) {
+        for (Task t : taskList) {
 
-        // Title
-        Label title = new Label(t.getTitle());
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+            // Filter logic
+            if (currentFilter.equals("COMPLETED") && !t.isCompleted()) continue;
+            if (currentFilter.equals("PENDING") && t.isCompleted()) continue;
 
-        // Deadline
-        Label deadline = new Label("Due: " + t.getDeadline());
+            Label title = new Label(t.getTitle());
+            title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        if (t.isCompleted()) {
-            title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: green;");
-            deadline.setStyle("-fx-text-fill: green;");
+            Label deadline = new Label("Due: " + t.getDeadline());
+
+            // Change color if completed
+            if (t.isCompleted()) {
+                title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: green;");
+                deadline.setStyle("-fx-text-fill: green;");
+            }
+
+            Button completeBtn = new Button("Complete");
+            Button deleteBtn = new Button("Delete");
+
+            completeBtn.setOnAction(e -> {
+                t.markComplete();
+                taskList.remove(t);
+                taskList.add(t);   // move completed task to bottom
+                refreshTasks();
+            });
+
+            deleteBtn.setOnAction(e -> {
+                taskList.remove(t);
+                refreshTasks();
+            });
+
+            HBox buttonRow = new HBox(10, completeBtn, deleteBtn);
+            VBox card = new VBox(5, title, deadline, buttonRow);
+
+            // Card styling
+            card.setStyle("""
+                -fx-background-color: #f5f5f5;
+                -fx-padding: 10;
+                -fx-border-color: #ddd;
+                -fx-border-radius: 8;
+                -fx-background-radius: 8;
+            """);
+
+            taskContainer.getChildren().add(card);
         }
+    }
 
-        // Buttons
-        Button completeBtn = new Button("✔ Complete");
-        Button deleteBtn = new Button("❌ Delete");
-
-        completeBtn.setOnAction(e -> {
-            t.markComplete();
-            refreshTasks();
-        });
-
-        deleteBtn.setOnAction(e -> {
-            taskList.remove(t);
-            refreshTasks();
-        });
-
-        // Button row
-        HBox buttonRow = new HBox(10, completeBtn, deleteBtn);
-
-        // Card layout
-        VBox card = new VBox(5, title, deadline, buttonRow);
-
-        // Card Styling
-        card.setStyle("""
-            -fx-background-color: #f5f5f5;
-            -fx-padding: 10;
-            -fx-border-color: #ddd;
-            -fx-border-radius: 8;
-            -fx-background-radius: 8;
-        """);
-
-        taskContainer.getChildren().add(card);
-        }
+    // Updated: Method to show popup error messages
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Invalid Input");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     public static void main(String[] args) {
