@@ -5,7 +5,10 @@ package ui;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Label;
+import javafx.scene.control.Button;
+import javafx.scene.control.TextField;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.geometry.Pos;
@@ -80,6 +83,7 @@ public class DashboardUI extends Application {
         root.setStyle("-fx-padding: 20;");
 
         Scene scene = new Scene(root, 800, 600);
+        scene.getRoot().setStyle("-fx-font-family: 'Segoe UI';");
 
         stage.setTitle("CTM Dashboard");
         stage.setScene(scene);
@@ -89,27 +93,52 @@ public class DashboardUI extends Application {
     // ================= REFRESH =================
     private void refreshTasks() {
 
-        taskContainer.getChildren().clear();
+    taskContainer.getChildren().clear();
 
-        for (Task t : taskList) {
+    for (Task t : taskList) {
 
-            Label taskLabel = new Label(t.getDetails());
+        // Title
+        Label title = new Label(t.getTitle());
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-            Button completeBtn = new Button("✔ Complete");
-            Button deleteBtn = new Button("❌ Delete");
+        // Deadline
+        Label deadline = new Label("Due: " + t.getDeadline());
 
-            completeBtn.setOnAction(e -> {
-                t.markComplete();
-                refreshTasks();
-            });
+        if (t.isCompleted()) {
+            title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: green;");
+            deadline.setStyle("-fx-text-fill: green;");
+        }
 
-            deleteBtn.setOnAction(e -> {
-                taskList.remove(t);
-                refreshTasks();
-            });
+        // Buttons
+        Button completeBtn = new Button("✔ Complete");
+        Button deleteBtn = new Button("❌ Delete");
 
-            HBox row = new HBox(10, taskLabel, completeBtn, deleteBtn);
-            taskContainer.getChildren().add(row);
+        completeBtn.setOnAction(e -> {
+            t.markComplete();
+            refreshTasks();
+        });
+
+        deleteBtn.setOnAction(e -> {
+            taskList.remove(t);
+            refreshTasks();
+        });
+
+        // Button row
+        HBox buttonRow = new HBox(10, completeBtn, deleteBtn);
+
+        // Card layout
+        VBox card = new VBox(5, title, deadline, buttonRow);
+
+        // Card Styling
+        card.setStyle("""
+            -fx-background-color: #f5f5f5;
+            -fx-padding: 10;
+            -fx-border-color: #ddd;
+            -fx-border-radius: 8;
+            -fx-background-radius: 8;
+        """);
+
+        taskContainer.getChildren().add(card);
         }
     }
 
