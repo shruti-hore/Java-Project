@@ -11,9 +11,11 @@ import javafx.stage.Stage;
 import javafx.geometry.Pos;
 
 import java.util.List;
+// import java.lang.classfile.Label;  // updated: REMOVED wrong import causing Label errors
 import java.util.ArrayList;
 
 import model.Task;
+import service.FileService;
 import service.MockDataService;
 
 public class DashboardUI extends Application {
@@ -26,7 +28,7 @@ public class DashboardUI extends Application {
     public void start(Stage stage) {
 
         // ================= DATA =================
-        taskList = new ArrayList<>(MockDataService.getSampleTasks());
+        taskList = FileService.loadTasks();
 
         // ================= TITLE =================
         Label title = new Label("Secure Task Manager Dashboard");
@@ -43,7 +45,7 @@ public class DashboardUI extends Application {
             @Override
             public void updateItem(java.time.LocalDate date, boolean empty) {
                 super.updateItem(date, empty);
-                setDisable(empty || date.isBefore(java.time.LocalDate.now()));
+                setDisable(empty || date.isBefore(java.time.LocalDate.now())); // updated
             }
         });
 
@@ -55,19 +57,20 @@ public class DashboardUI extends Application {
 
             // Check empty title or no date selected
             if (t.isEmpty() || deadlineInput.getValue() == null) {
-                showError("Please enter task title and select a valid date.");
+                showError("Please enter task title and select a valid date."); // updated
                 return;
             }
 
             // Check if selected date is in the past
             if (deadlineInput.getValue().isBefore(java.time.LocalDate.now())) {
-                showError("Deadline cannot be in the past.");
+                showError("Deadline cannot be in the past."); // updated
                 return;
             }
 
             String d = deadlineInput.getValue().toString();
 
             taskList.add(new Task(t, d, false));
+            FileService.saveTasks(taskList);   // updated: saving data
             titleInput.clear();
             deadlineInput.setValue(null);
             refreshTasks();
@@ -83,6 +86,10 @@ public class DashboardUI extends Application {
         Label allTasks = new Label("All Tasks");
         Label completed = new Label("Completed");
         Label pending = new Label("Pending");
+
+        allTasks.setStyle("-fx-cursor: hand;");
+        completed.setStyle("-fx-cursor: hand;");
+        pending.setStyle("-fx-cursor: hand;");
 
         allTasks.setOnMouseClicked(e -> {
             currentFilter = "ALL";
@@ -132,7 +139,6 @@ public class DashboardUI extends Application {
 
         for (Task t : taskList) {
 
-            // Filter logic
             if (currentFilter.equals("COMPLETED") && !t.isCompleted()) continue;
             if (currentFilter.equals("PENDING") && t.isCompleted()) continue;
 
@@ -141,7 +147,6 @@ public class DashboardUI extends Application {
 
             Label deadline = new Label("Due: " + t.getDeadline());
 
-            // Change color if completed
             if (t.isCompleted()) {
                 title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: green;");
                 deadline.setStyle("-fx-text-fill: green;");
@@ -152,20 +157,26 @@ public class DashboardUI extends Application {
 
             completeBtn.setOnAction(e -> {
                 t.markComplete();
+
                 taskList.remove(t);
-                taskList.add(t);   // move completed task to bottom
+                taskList.add(t);
+
+                FileService.saveTasks(taskList); // updated
+
                 refreshTasks();
             });
 
             deleteBtn.setOnAction(e -> {
                 taskList.remove(t);
+
+                FileService.saveTasks(taskList); // updated
+
                 refreshTasks();
             });
 
             HBox buttonRow = new HBox(10, completeBtn, deleteBtn);
             VBox card = new VBox(5, title, deadline, buttonRow);
 
-            // Card styling
             card.setStyle("""
                 -fx-background-color: #f5f5f5;
                 -fx-padding: 10;
@@ -179,7 +190,7 @@ public class DashboardUI extends Application {
     }
 
     // Updated: Method to show popup error messages
-    private void showError(String message) {
+    private void showError(String message) { // updated
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Invalid Input");
         alert.setHeaderText(null);
