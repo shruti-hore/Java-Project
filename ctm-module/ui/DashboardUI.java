@@ -35,6 +35,8 @@ public class DashboardUI extends Application {
 
         // ================= INPUT FIELDS =================
         TextField titleInput = new TextField();
+        TextField descriptionInput = new TextField(); // updated
+        descriptionInput.setPromptText("Task Description"); // updated
         titleInput.setPromptText("Task Title");
 
         DatePicker deadlineInput = new DatePicker();
@@ -66,14 +68,16 @@ public class DashboardUI extends Application {
 
             String d = deadlineInput.getValue().toString();
 
-            taskList.add(new Task(t, d, false));
+            String desc = descriptionInput.getText(); // updated
+            taskList.add(new Task(t, desc, d, false)); // updated   
             FileService.saveTasks(taskList); // updated
             titleInput.clear();
+            descriptionInput.clear(); // updated
             deadlineInput.setValue(null);
             refreshTasks();
         });
 
-        HBox inputBox = new HBox(10, titleInput, deadlineInput, addBtn);
+        HBox inputBox = new HBox(10, titleInput, descriptionInput, deadlineInput, addBtn); // updated
         inputBox.setAlignment(Pos.CENTER);
 
         VBox topBox = new VBox(10, title, inputBox);
@@ -143,6 +147,7 @@ public class DashboardUI extends Application {
             title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
             Label deadline = new Label("Due: " + t.getDeadline());
+            Label desc = new Label(t.getDescription()); // updated
 
             // updated: convert deadline to LocalDate
             java.time.LocalDate taskDate = java.time.LocalDate.parse(t.getDeadline());
@@ -185,53 +190,70 @@ public class DashboardUI extends Application {
             });
 
             editBtn.setOnAction(e -> {
+                // ================= DIALOG =================
+                Dialog<ButtonType> dialog = new Dialog<>();
+                dialog.setTitle("Edit Task");
 
-                // updated: dialog for title
-                TextInputDialog titleDialog = new TextInputDialog(t.getTitle());
-                titleDialog.setTitle("Edit Task");
-                titleDialog.setHeaderText("Edit Task Title");
-                titleDialog.setContentText("Title:");
+                // ================= INPUT FIELDS =================
+                TextField titleField = new TextField(t.getTitle()); // updated
+                TextField descField = new TextField(t.getDescription()); // updated
+                DatePicker datePicker = new DatePicker(java.time.LocalDate.parse(t.getDeadline())); // updated
 
-                String newTitle = titleDialog.showAndWait().orElse(null);
-
-                if (newTitle == null || newTitle.isEmpty()) return;
-
-                // updated: dialog for date
-                Dialog<java.time.LocalDate> dateDialog = new Dialog<>();
-                dateDialog.setTitle("Edit Deadline");
-
-                DatePicker datePicker = new DatePicker(java.time.LocalDate.parse(t.getDeadline()));
-
-                // updated: disable past dates
+                // disable past dates
                 datePicker.setDayCellFactory(picker -> new DateCell() {
                     @Override
                     public void updateItem(java.time.LocalDate date, boolean empty) {
                         super.updateItem(date, empty);
-                        setDisable(empty || date.isBefore(java.time.LocalDate.now()));
+                        setDisable(empty || date.isBefore(java.time.LocalDate.now())); // updated
                     }
                 });
 
-                dateDialog.getDialogPane().setContent(datePicker);
-                dateDialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+                titleField.setPromptText("Task Title");
+                descField.setPromptText("Task Description");
 
-                dateDialog.setResultConverter(btn -> {
-                    if (btn == ButtonType.OK) {
-                        return datePicker.getValue();
+                // ================= LAYOUT =================
+                VBox layout = new VBox(10,
+                        new Label("Title:"), titleField,
+                        new Label("Description:"), descField,
+                        new Label("Deadline:"), datePicker
+                );
+
+                layout.setStyle("-fx-padding: 10;");
+
+                dialog.getDialogPane().setContent(layout);
+
+                dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+                // ================= RESULT =================
+                dialog.setResultConverter(button -> button);
+
+                ButtonType result = dialog.showAndWait().orElse(ButtonType.CANCEL);
+
+                if (result == ButtonType.OK) {
+
+                    String newTitle = titleField.getText();
+                    String newDesc = descField.getText();
+                    java.time.LocalDate newDate = datePicker.getValue();
+
+                    // ================= VALIDATION =================
+                    if (newTitle.isEmpty() || newDesc.isEmpty() || newDate == null) {
+                        showError("All fields are required."); // updated
+                        return;
                     }
-                    return null;
-                });
 
-                java.time.LocalDate newDate = dateDialog.showAndWait().orElse(null);
+                    if (newDate.isBefore(java.time.LocalDate.now())) {
+                        showError("Deadline cannot be in the past."); // updated
+                        return;
+                    }
 
-                if (newDate == null) return;
+                    // ================= APPLY =================
+                    t.setTitle(newTitle);
+                    t.setDescription(newDesc);
+                    t.setDeadline(newDate.toString());
 
-                // updated: apply changes
-                t.setTitle(newTitle); // make sure setter exists
-                t.setDeadline(newDate.toString()); // make sure setter exists
-
-                FileService.saveTasks(taskList); // updated
-
-                refreshTasks();
+                    FileService.saveTasks(taskList);
+                    refreshTasks();
+                }
             });
 
             HBox buttonRow = new HBox(10, completeBtn, editBtn, deleteBtn); // updated
@@ -243,9 +265,9 @@ public class DashboardUI extends Application {
             // updated: conditional card UI
             VBox card;
             if (isOverdue) {
-                card = new VBox(5, title, deadline, overdueLabel, buttonRow); // updated
+                card = new VBox(5, title, desc, deadline, overdueLabel, buttonRow); // updated
             } else {
-                card = new VBox(5, title, deadline, buttonRow);
+                card = new VBox(5, title, desc, deadline, buttonRow); // updated
             }
 
             card.setStyle("""
