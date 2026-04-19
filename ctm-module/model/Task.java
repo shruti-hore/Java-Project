@@ -31,4 +31,12 @@ public class Task {
     public boolean isCompleted() {
         return isCompleted;
     }
+
+    public void setTitle(String title) { // updated
+        this.title = title;
+    }
+
+    public void setDeadline(String deadline) { // updated
+        this.deadline = deadline;
+    }
 }
