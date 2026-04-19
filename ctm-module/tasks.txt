@@ -1,4 +1,3 @@
-vbhjn|2026-04-29|false
-dfgcbvh|2026-04-28|false
-xdcv|2026-04-23|false
-dsgv|2026-05-01|true
+t4|2026-04-20|true
+t3|2026-04-20|false
+t2|2026-04-21|true

@@ -3,6 +3,8 @@
 
 package ui;
 
+import javafx.stage.Stage;
+import javafx.scene.control.DateCell;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -11,76 +13,112 @@ import javafx.stage.Stage;
 import javafx.geometry.Pos;
 
 import java.util.List;
-import javafx.scene.control.Label; // updated
-import java.util.ArrayList;
 
 import model.Task;
 import service.FileService;
-import service.MockDataService;
 
 public class DashboardUI extends Application {
 
     private VBox taskContainer;
     private List<Task> taskList;
     private String currentFilter = "ALL";
+    private String searchText = "";
+
+    private Label totalLabel;
+    private Label completedLabel;
+    private Label pendingLabel;
 
     @Override
     public void start(Stage stage) {
 
-        // ================= DATA =================
         taskList = FileService.loadTasks();
 
         // ================= TITLE =================
         Label title = new Label("Secure Task Manager Dashboard");
+        title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
-        // ================= INPUT FIELDS =================
+        // ================= INPUT =================
         TextField titleInput = new TextField();
-        TextField descriptionInput = new TextField(); // updated
-        descriptionInput.setPromptText("Task Description"); // updated
         titleInput.setPromptText("Task Title");
+
+        TextField descriptionInput = new TextField();
+        descriptionInput.setPromptText("Task Description");
 
         DatePicker deadlineInput = new DatePicker();
 
-        // updated: disable past dates
         deadlineInput.setDayCellFactory(picker -> new DateCell() {
             @Override
             public void updateItem(java.time.LocalDate date, boolean empty) {
                 super.updateItem(date, empty);
-                setDisable(empty || date.isBefore(java.time.LocalDate.now())); // updated
+                setDisable(empty || date.isBefore(java.time.LocalDate.now()));
             }
         });
 
         Button addBtn = new Button("Add Task");
 
-        // updated: validation + popup
-        addBtn.setOnAction(e -> {
-            String t = titleInput.getText();
+        String inputStyle = "-fx-background-radius: 8; -fx-border-radius: 8; -fx-border-color: #ccc; -fx-padding: 8;";
+        titleInput.setStyle(inputStyle);
+        descriptionInput.setStyle(inputStyle);
 
-            if (t.isEmpty() || deadlineInput.getValue() == null) {
-                showError("Please enter task title and select a valid date."); // updated
+        String buttonStyle = "-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-background-radius: 8;";
+        addBtn.setStyle(buttonStyle);
+
+        addBtn.setOnMouseEntered(e -> addBtn.setStyle("-fx-background-color: #45a049; -fx-text-fill: white;"));
+        addBtn.setOnMouseExited(e -> addBtn.setStyle(buttonStyle));
+
+        // ADD TASK
+        addBtn.setOnAction(e -> {
+
+            String t = titleInput.getText();
+            String desc = descriptionInput.getText();
+
+            if (t.isEmpty() || desc.isEmpty() || deadlineInput.getValue() == null) {
+                showError("Enter all fields");
                 return;
             }
 
             if (deadlineInput.getValue().isBefore(java.time.LocalDate.now())) {
-                showError("Deadline cannot be in the past."); // updated
+                showError("Past date not allowed");
                 return;
             }
 
-            String d = deadlineInput.getValue().toString();
+            taskList.add(new Task(t, desc, deadlineInput.getValue().toString(), false));
+            sortTasksByDeadline(); // added
+            FileService.saveTasks(taskList);
 
-            String desc = descriptionInput.getText(); // updated
-            taskList.add(new Task(t, desc, d, false)); // updated   
-            FileService.saveTasks(taskList); // updated
             titleInput.clear();
-            descriptionInput.clear(); // updated
+            descriptionInput.clear();
             deadlineInput.setValue(null);
+
             refreshTasks();
         });
 
-        HBox inputBox = new HBox(10, titleInput, descriptionInput, deadlineInput, addBtn); // updated
+        HBox inputBox = new HBox(10, titleInput, descriptionInput, deadlineInput, addBtn);
         inputBox.setAlignment(Pos.CENTER);
 
-        VBox topBox = new VBox(10, title, inputBox);
+        // ================= SEARCH =================
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search...");
+        searchField.setStyle(inputStyle);
+
+        searchField.textProperty().addListener((obs, o, n) -> {
+            searchText = n.toLowerCase();
+            refreshTasks();
+        });
+
+        // ================= STATS =================
+        totalLabel = new Label();
+        completedLabel = new Label();
+        pendingLabel = new Label();
+
+        completedLabel.setStyle("-fx-text-fill: green;");
+        pendingLabel.setStyle("-fx-text-fill: red;");
+
+        HBox statsBox = new HBox(20, totalLabel, completedLabel, pendingLabel);
+        statsBox.setAlignment(Pos.CENTER);
+        statsBox.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-border-color: #ddd;");
+
+        VBox topBox = new VBox(15, title, inputBox, searchField, statsBox);
         topBox.setAlignment(Pos.CENTER);
 
         // ================= SIDEBAR =================
@@ -88,54 +126,55 @@ public class DashboardUI extends Application {
         Label completed = new Label("Completed");
         Label pending = new Label("Pending");
 
-        allTasks.setStyle("-fx-cursor: hand;");
-        completed.setStyle("-fx-cursor: hand;");
-        pending.setStyle("-fx-cursor: hand;");
+        allTasks.setStyle("-fx-text-fill: white;");
+        completed.setStyle("-fx-text-fill: white;");
+        pending.setStyle("-fx-text-fill: white;");
 
-        allTasks.setOnMouseClicked(e -> {
-            currentFilter = "ALL";
-            refreshTasks();
-        });
+        allTasks.setOnMouseClicked(e -> { currentFilter = "ALL"; refreshTasks(); });
+        completed.setOnMouseClicked(e -> { currentFilter = "COMPLETED"; refreshTasks(); });
+        pending.setOnMouseClicked(e -> { currentFilter = "PENDING"; refreshTasks(); });
 
-        completed.setOnMouseClicked(e -> {
-            currentFilter = "COMPLETED";
-            refreshTasks();
-        });
-
-        pending.setOnMouseClicked(e -> {
-            currentFilter = "PENDING";
-            refreshTasks();
-        });
-
-        VBox sidebar = new VBox(10, allTasks, completed, pending);
-        sidebar.setPrefWidth(150);
-        sidebar.setStyle("-fx-padding: 10; -fx-background-color: #eeeeee;");
+        VBox sidebar = new VBox(15, allTasks, completed, pending);
+        sidebar.setStyle("-fx-background-color: #2c3e50; -fx-padding: 15;");
 
         // ================= TASK AREA =================
-        taskContainer = new VBox(10);
+        taskContainer = new VBox(15);
         refreshTasks();
 
         ScrollPane scrollPane = new ScrollPane(taskContainer);
         scrollPane.setFitToWidth(true);
 
-        // ================= ROOT =================
         BorderPane root = new BorderPane();
         root.setTop(topBox);
         root.setLeft(sidebar);
         root.setCenter(scrollPane);
-        root.setStyle("-fx-padding: 20;");
+        root.setStyle("-fx-padding: 20; -fx-background-color: #f5f5f5;");
 
-        Scene scene = new Scene(root, 800, 600);
-        scene.getRoot().setStyle("-fx-font-family: 'Segoe UI';");
-
-        stage.setTitle("CTM Dashboard");
+        Scene scene = new Scene(root, 900, 600);
         stage.setScene(scene);
+        stage.setTitle("Dashboard");
         stage.show();
+    }
+
+    // ================= STATS =================
+    private void updateStats() {
+        int total = taskList.size();
+        int completed = 0;
+
+        for (Task t : taskList) {
+            if (t.isCompleted()) completed++;
+        }
+
+        totalLabel.setText("Total: " + total);
+        completedLabel.setText("Completed: " + completed);
+        pendingLabel.setText("Pending: " + (total - completed));
     }
 
     // ================= REFRESH =================
     private void refreshTasks() {
+        sortTasksByDeadline(); // added
 
+        updateStats();
         taskContainer.getChildren().clear();
 
         for (Task t : taskList) {
@@ -143,152 +182,117 @@ public class DashboardUI extends Application {
             if (currentFilter.equals("COMPLETED") && !t.isCompleted()) continue;
             if (currentFilter.equals("PENDING") && t.isCompleted()) continue;
 
+            if (!t.getTitle().toLowerCase().contains(searchText) &&
+                !t.getDescription().toLowerCase().contains(searchText)) continue;
+
             Label title = new Label(t.getTitle());
-            title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
+            Label desc = new Label(t.getDescription());
             Label deadline = new Label("Due: " + t.getDeadline());
-            Label desc = new Label(t.getDescription()); // updated
-
-            // updated: convert deadline to LocalDate
-            java.time.LocalDate taskDate = java.time.LocalDate.parse(t.getDeadline());
-            java.time.LocalDate today = java.time.LocalDate.now();
-
-            // updated: overdue condition
-            boolean isOverdue = taskDate.isBefore(today) && !t.isCompleted();
-
-            if (t.isCompleted()) {
-                title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: green;");
-                deadline.setStyle("-fx-text-fill: green;");
-            }
-            // updated: overdue styling
-            else if (isOverdue) {
-                title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: red;");
-                deadline.setStyle("-fx-text-fill: red;");
-            }
 
             Button completeBtn = new Button("Complete");
+            Button editBtn = new Button("Edit");
             Button deleteBtn = new Button("Delete");
-            Button editBtn = new Button("Edit"); // updated
+
+            // BUTTON STYLES
+            completeBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
+            editBtn.setStyle("-fx-background-color: #FFC107;");
+            deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
 
             completeBtn.setOnAction(e -> {
                 t.markComplete();
-
-                taskList.remove(t);
-                taskList.add(t);
-
-                FileService.saveTasks(taskList); // updated
-
+                FileService.saveTasks(taskList);
                 refreshTasks();
             });
 
             deleteBtn.setOnAction(e -> {
                 taskList.remove(t);
-
-                FileService.saveTasks(taskList); // updated
-
+                FileService.saveTasks(taskList);
                 refreshTasks();
             });
 
             editBtn.setOnAction(e -> {
-                // ================= DIALOG =================
-                Dialog<ButtonType> dialog = new Dialog<>();
-                dialog.setTitle("Edit Task");
 
-                // ================= INPUT FIELDS =================
-                TextField titleField = new TextField(t.getTitle()); // updated
-                TextField descField = new TextField(t.getDescription()); // updated
-                DatePicker datePicker = new DatePicker(java.time.LocalDate.parse(t.getDeadline())); // updated
+                Stage editStage = new Stage();
+                editStage.setTitle("Edit Task");
 
-                // disable past dates
+                // ===== INPUT FIELDS (pre-filled) =====
+                TextField titleField = new TextField(t.getTitle());
+                TextField descField = new TextField(t.getDescription());
+                DatePicker datePicker = new DatePicker(java.time.LocalDate.parse(t.getDeadline()));
+
+                // Disable past dates
                 datePicker.setDayCellFactory(picker -> new DateCell() {
                     @Override
                     public void updateItem(java.time.LocalDate date, boolean empty) {
                         super.updateItem(date, empty);
-                        setDisable(empty || date.isBefore(java.time.LocalDate.now())); // updated
+                        setDisable(empty || date.isBefore(java.time.LocalDate.now()));
                     }
                 });
 
-                titleField.setPromptText("Task Title");
-                descField.setPromptText("Task Description");
+                // ===== SAVE BUTTON =====
+                Button saveBtn = new Button("Save Changes");
 
-                // ================= LAYOUT =================
-                VBox layout = new VBox(10,
-                        new Label("Title:"), titleField,
-                        new Label("Description:"), descField,
-                        new Label("Deadline:"), datePicker
-                );
-
-                layout.setStyle("-fx-padding: 10;");
-
-                dialog.getDialogPane().setContent(layout);
-
-                dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-                // ================= RESULT =================
-                dialog.setResultConverter(button -> button);
-
-                ButtonType result = dialog.showAndWait().orElse(ButtonType.CANCEL);
-
-                if (result == ButtonType.OK) {
+                saveBtn.setOnAction(ev -> {
 
                     String newTitle = titleField.getText();
                     String newDesc = descField.getText();
                     java.time.LocalDate newDate = datePicker.getValue();
 
-                    // ================= VALIDATION =================
-                    if (newTitle.isEmpty() || newDesc.isEmpty() || newDate == null) {
-                        showError("All fields are required."); // updated
+                    // Validation
+                    if (newTitle.isEmpty() || newDate == null) {
+                        showError("Title and valid date required!");
                         return;
                     }
 
-                    if (newDate.isBefore(java.time.LocalDate.now())) {
-                        showError("Deadline cannot be in the past."); // updated
-                        return;
-                    }
-
-                    // ================= APPLY =================
+                    // Apply changes
                     t.setTitle(newTitle);
                     t.setDescription(newDesc);
                     t.setDeadline(newDate.toString());
+                    sortTasksByDeadline(); // added
 
                     FileService.saveTasks(taskList);
                     refreshTasks();
-                }
+
+                    editStage.close();
+                });
+
+                // ===== LAYOUT =====
+                VBox layout = new VBox(10,
+                        new Label("Title"), titleField,
+                        new Label("Description"), descField,
+                        new Label("Deadline"), datePicker,
+                        saveBtn
+                );
+
+                layout.setStyle("-fx-padding: 20;");
+                layout.setAlignment(Pos.CENTER);
+
+                Scene scene = new Scene(layout, 300, 350);
+                editStage.setScene(scene);
+                editStage.show();
             });
 
-            HBox buttonRow = new HBox(10, completeBtn, editBtn, deleteBtn); // updated
+            HBox btnRow = new HBox(10, completeBtn, editBtn, deleteBtn);
 
-            // updated: overdue label
-            Label overdueLabel = new Label("OVERDUE");
-            overdueLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-
-            // updated: conditional card UI
-            VBox card;
-            if (isOverdue) {
-                card = new VBox(5, title, desc, deadline, overdueLabel, buttonRow); // updated
-            } else {
-                card = new VBox(5, title, desc, deadline, buttonRow); // updated
-            }
-
-            card.setStyle("""
-                -fx-background-color: #f5f5f5;
-                -fx-padding: 10;
-                -fx-border-color: #ddd;
-                -fx-border-radius: 8;
-                -fx-background-radius: 8;
-            """);
+            VBox card = new VBox(5, title, desc, deadline, btnRow);
+            card.setStyle("-fx-background-color: white; -fx-padding: 15; -fx-border-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1),5,0,0,2);");
 
             taskContainer.getChildren().add(card);
         }
     }
 
-    // updated: error popup
-    private void showError(String message) { // updated
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Invalid Input");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+    private void sortTasksByDeadline() {
+        taskList.sort((t1, t2) -> {
+            java.time.LocalDate d1 = java.time.LocalDate.parse(t1.getDeadline());
+            java.time.LocalDate d2 = java.time.LocalDate.parse(t2.getDeadline());
+            return d1.compareTo(d2); // earliest first
+        });
+    }
+
+        private void showError(String msg) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setContentText(msg);
+        a.show();
     }
 
     public static void main(String[] args) {
