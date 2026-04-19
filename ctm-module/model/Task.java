@@ -19,4 +19,16 @@ public class Task {
     public String getDetails() {
         return title + " | Due: " + deadline + " | Done: " + isCompleted;
     }
+
+    public String getTitle() {
+    return title;
+    }
+
+    public String getDeadline() {
+        return deadline;
+    }
+
+    public boolean isCompleted() {
+        return isCompleted;
+    }
 }
