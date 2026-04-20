@@ -1,5 +1,6 @@
 package model;
 
+import org.bson.types.ObjectId;
 import java.time.LocalDate;
 
 public class Task {
@@ -8,12 +9,22 @@ public class Task {
     private String description; // updated
     private LocalDate deadline;
     private boolean completed;
+    private ObjectId id;
 
-    public Task(String title, String description, LocalDate deadline, boolean completed) {
+    public Task(ObjectId id, String title, String description, LocalDate deadline, boolean completed) {
+        this.id = id;
         this.title = title;
-        this.description = description; // updated
+        this.description = description;
         this.deadline = deadline;
         this.completed = completed;
+    }
+
+    public ObjectId getId() {
+        return id;
+    }
+
+    public void setId(ObjectId id) {
+        this.id = id;
     }
 
     // Getters
