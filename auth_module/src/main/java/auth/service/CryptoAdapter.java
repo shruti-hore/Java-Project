@@ -8,5 +8,25 @@ public class CryptoAdapter
   {
     this.cryptoService = cryptoService;
   }
-  // Future methods will call crypto module functions
+
+  public byte[] deriveMasterKey(char[] password, byte[] salt)
+  {
+    // call crypto module
+    return new byte[32]; // placeholder
+  }
+
+  public byte[] deriveVaultKey(byte[] masterKey)
+  {
+    return new byte[32]; // placeholder
+  }
+
+  public byte[][] generateKeyPair()
+  {
+    return new byte[2][]; // [public, private]
+  }
+
+  public byte[] encryptVault(byte[] privateKey, byte[] vaultKey)
+  {
+    return new byte[0]; // placeholder
+  }
 }
