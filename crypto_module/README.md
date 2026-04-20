@@ -47,6 +47,19 @@ Generates a fresh random key pair for secure key agreement (Diffie-Hellman).
 - **Use Case:** Generating the unique identity and encryption keys for users.
 - **Why X25519** An elliptic curve designed specifically for key exchange — fast, small keys (32 bytes), and practically immune to implementation mistakes.
 
+### 4. ECDH Shared Secret Calculation
+**Class:** `EcdhService`
+**Method:** `byte[] computeSharedSecret(PrivateKey myPrivateKey, PublicKey theirPublicKey)`
+
+Computes a mutual 32-byte shared secret using a private key and a counterparty's public key.
+- **Parameters:**
+    - `myPrivateKey`: The caller's X25519 private key object.
+    - `theirPublicKey`: The 32-byte public key of the other party.
+- **Security Constraints:**
+    - Raw ECDH output is **never returned**; it is immediately **SHA-256 hashed** to ensure uniform entropy.
+    - The raw intermediate secret is zeroed in memory in a `finally` block.
+- **Use Case:** The foundation for all peer-to-peer encryption. Two users can arrive at the same AES key by only knowing each other's public keys.
+- **Why ECDH** X25519 allows any two parties to derive the same shared secret from their respective key pairs — without ever transmitting the secret itself.
 
 ---
 
