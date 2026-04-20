@@ -33,6 +33,21 @@ Derives context-specific sub-keys from the master key to ensure key isolation.
 - **Use Case:** Creating isolated keys for specific tasks (e.g., one key for the vault, another for signing) so that a compromise in one context doesn't affect others.
 - **Why HKDF-SHA256** Helps create strong master key, to the later create cryptographically separate derived keys.
 
+### 3. X25519 Key Pair Generation
+**Class:** `KeyPairService`
+**Method:** `X25519KeyPair generateKeyPair()`
+
+Generates a fresh random key pair for secure key agreement (Diffie-Hellman).
+- **Parameters:**
+    - No input for generation.
+    - `rawBytes`: 32-byte array for loading existing public keys.
+- **Security Constraints:**
+    - Uses the **X25519** curve (RFC 7748).
+    - Public keys are handled as **raw 32-byte arrays**, avoiding bulky DER/ASN.1 formats.
+- **Use Case:** Generating the unique identity and encryption keys for users.
+- **Why X25519** An elliptic curve designed specifically for key exchange — fast, small keys (32 bytes), and practically immune to implementation mistakes.
+
+
 ---
 
 ## Global Security Rules
