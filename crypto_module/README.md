@@ -16,6 +16,7 @@ Derives the primary 32-byte master key from a user's password.
     - Uses **Argon2id** with hard-floor parameters (`m=64MB, t=3, p=4`).
     - Password `char[]` is automatically zeroed in a `finally` block after derivation.
 - **Use Case:** Initial user authentication and derivation of the base key material.
+- **Why Argon2id** It is the standard for password hashing. Resistent to GPU cracking due to its memory heaviness. Not a problem since it is executed only one.
 
 ### 2. Sub-Key Derivation (HKDF-SHA256)
 **Class:** `SubKeyDerivation`
@@ -30,6 +31,7 @@ Derives context-specific sub-keys from the master key to ensure key isolation.
     - Prevents "taxonomy drift" by strictly validating info strings.
     - Uses **UTF-8** encoding for labels to ensure cross-platform consistency.
 - **Use Case:** Creating isolated keys for specific tasks (e.g., one key for the vault, another for signing) so that a compromise in one context doesn't affect others.
+- **Why HKDF-SHA256** Helps create strong master key, to the later create cryptographically separate derived keys.
 
 ---
 
