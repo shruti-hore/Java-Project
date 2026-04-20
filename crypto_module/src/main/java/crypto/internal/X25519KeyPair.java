@@ -1,7 +1,6 @@
 package crypto.internal;
 
 import java.security.PrivateKey;
-import java.security.PublicKey;
 
 /**
  * Container for X25519 key material.
