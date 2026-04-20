@@ -48,7 +48,6 @@ public class MasterKeyDerivationTest {
     @Test
     void shouldZeroPasswordAfterDerivation() {
         char[] password = "sensitivePassword".toCharArray();
-        char[] passwordCopy = password.clone();
         byte[] salt = new byte[16];
 
         derivation.derive(password, salt);
