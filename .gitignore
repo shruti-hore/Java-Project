@@ -1,5 +1,17 @@
-*.class
-target/
-*.log
 .idea/
 .vscode/
+
+# Project Builder folders (Agents, Skills, etc)
+**/Builder/
+**/builder/
+
+# Maven/Java
+target/
+*.class
+*.log
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
