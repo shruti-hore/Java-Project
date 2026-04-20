@@ -2,8 +2,12 @@ package service;
 
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
-import org.bson.Document;
+import com.mongodb.client.model.Updates;
+
 import model.Task;
+
+import org.bson.Document;
+import org.bson.types.ObjectId;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -11,75 +15,68 @@ import java.util.List;
 
 public class MongoService {
 
-    private static final String URI = "mongodb://localhost:27017";
-    private static final String DB_NAME = "task_manager";
-    private static final String COLLECTION = "tasks";
+    private static final String CONNECTION_STRING = "mongodb://localhost:27017";
+    private static final String DB_NAME = "taskmanager";
+    private static final String COLLECTION_NAME = "tasks";
 
-    private static MongoCollection<Document> getCollection() {
-        MongoClient client = MongoClients.create(URI);
-        MongoDatabase db = client.getDatabase(DB_NAME);
-        return db.getCollection(COLLECTION);
+    private static MongoCollection<Document> collection;
+
+    static {
+        MongoClient mongoClient = MongoClients.create(CONNECTION_STRING);
+        MongoDatabase database = mongoClient.getDatabase(DB_NAME);
+        collection = database.getCollection(COLLECTION_NAME);
     }
 
-    // ===== ADD TASK =====
+    // ===================== ADD TASK =====================
     public static void addTask(Task task) {
-
-        MongoCollection<Document> col = getCollection();
-
         Document doc = new Document("title", task.getTitle())
                 .append("description", task.getDescription())
                 .append("deadline", task.getDeadline().toString())
                 .append("completed", task.isCompleted());
 
-        col.insertOne(doc);
+        collection.insertOne(doc);
+
+        // IMPORTANT: set generated _id back to task
+        task.setId(doc.getObjectId("_id"));
     }
 
-    // ===== GET TASKS =====
+    // ===================== GET TASKS =====================
     public static List<Task> getTasks() {
+        List<Task> tasks = new ArrayList<>();
 
-        MongoCollection<Document> col = getCollection();
-        List<Task> list = new ArrayList<>();
+        FindIterable<Document> docs = collection.find();
 
-        for (Document d : col.find()) {
+        for (Document doc : docs) {
+            ObjectId id = doc.getObjectId("_id");
+            String title = doc.getString("title");
+            String desc = doc.getString("description");
+            LocalDate deadline = LocalDate.parse(doc.getString("deadline"));
+            boolean completed = doc.getBoolean("completed", false);
 
-            Task t = new Task(
-                    d.getString("title"),
-                    d.getString("description"),
-                    LocalDate.parse(d.getString("deadline")),
-                    d.getBoolean("completed")
-            );
-
-            list.add(t);
+            Task t = new Task(id, title, desc, deadline, completed);
+            tasks.add(t);
         }
 
-        return list;
+        return tasks;
     }
 
-    // ===== DELETE TASK =====
+    // ===================== DELETE TASK =====================
     public static void deleteTask(Task task) {
-
-        MongoCollection<Document> col = getCollection();
-
-        col.deleteOne(Filters.and(
-                Filters.eq("title", task.getTitle()),
-                Filters.eq("deadline", task.getDeadline().toString())
-        ));
+        collection.deleteOne(Filters.eq("_id", task.getId()));
     }
 
-    // ===== UPDATE TASK =====
+    // ===================== UPDATE TASK =====================
     public static void updateTask(Task oldTask, Task newTask) {
 
-        MongoCollection<Document> col = getCollection();
+        collection.updateOne(
+                Filters.eq("_id", oldTask.getId()),
 
-        col.updateOne(
-                Filters.and(
-                        Filters.eq("title", oldTask.getTitle()),
-                        Filters.eq("deadline", oldTask.getDeadline().toString())
-                ),
-                new Document("$set", new Document("title", newTask.getTitle())
-                        .append("description", newTask.getDescription())
-                        .append("deadline", newTask.getDeadline().toString())
-                        .append("completed", newTask.isCompleted()))
+                Updates.combine(
+                        Updates.set("title", newTask.getTitle()),
+                        Updates.set("description", newTask.getDescription()),
+                        Updates.set("deadline", newTask.getDeadline().toString()),
+                        Updates.set("completed", newTask.isCompleted())
+                )
         );
     }
 }
