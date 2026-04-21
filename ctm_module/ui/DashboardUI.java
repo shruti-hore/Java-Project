@@ -71,6 +71,18 @@ public class DashboardUI extends Application {
         });
     }
 
+    private void styleButton(Button btn, String color, String hoverColor, String textColor) {
+        String base = "-fx-background-color: " + color + ";" +
+                      "-fx-text-fill: " + textColor + ";" +
+                      "-fx-font-weight: bold;" +
+                      "-fx-background-radius: 8;" +
+                      "-fx-padding: 6 12;" +
+                      "-fx-cursor: hand;";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(base + "-fx-background-color: " + hoverColor + ";"));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
+    }
+
     @Override
     public void start(Stage stage) {
 
@@ -103,6 +115,7 @@ public class DashboardUI extends Application {
         });
 
         Button addBtn = new Button("Add Task");
+        styleButton(addBtn, "#1abc9c", "#16a085", "white");
 
         // ADD TASK
         addBtn.setOnAction(e -> {
@@ -293,51 +306,17 @@ public class DashboardUI extends Application {
             desc.setStyle("-fx-text-fill: #555;");
             deadline.setStyle("-fx-text-fill: #888;");
 
-            Button completeBtn = new Button("Complete");
             Button editBtn = new Button("Edit");
             Button deleteBtn = new Button("Delete");
 
             Button startBtn = new Button("Start");
             Button doneBtn = new Button("Done");
 
-            // updated - button colors
-           startBtn.setStyle(
-                "-fx-background-color: #3498db;" +
-                "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 6 12;"
-            );
-
-            doneBtn.setStyle(
-                "-fx-background-color: #2ecc71;" +
-                "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 6 12;"
-            );
-
-            editBtn.setStyle(
-                "-fx-background-color: #f1c40f;" +
-                "-fx-text-fill: black;" +   // yellow → black text
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 6 12;"
-            );
-
-            deleteBtn.setStyle(
-                "-fx-background-color: #e74c3c;" +
-                "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 8;" +
-                "-fx-padding: 6 12;"
-            );
-            // COMPLETE
-            completeBtn.setOnAction(e -> {
-                t.setCompleted(true);
-                mongoService.updateCompletion(t.getId(), true); // updated
-                refreshTasks();
-            });
+            // Apply styles
+            styleButton(startBtn, "#3498db", "#2980b9", "white");
+            styleButton(doneBtn, "#2ecc71", "#27ae60", "white");
+            styleButton(editBtn, "#f1c40f", "#f39c12", "black");
+            styleButton(deleteBtn, "#e74c3c", "#c0392b", "white");
 
             // START
             startBtn.setOnAction(e -> {
@@ -372,6 +351,7 @@ public class DashboardUI extends Application {
                 DatePicker datePicker = new DatePicker(LocalDate.parse(t.getDeadline())); // updated
 
                 Button saveBtn = new Button("Save");
+                styleButton(saveBtn, "#34495e", "#2c3e50", "white");
 
                 saveBtn.setOnAction(ev -> {
 
@@ -412,13 +392,20 @@ public class DashboardUI extends Application {
                 editStage.show();
             });
 
-            HBox btnRow = new HBox(10, startBtn, doneBtn, editBtn, deleteBtn); // updated
-
+            HBox btnRow = new HBox(10, editBtn, deleteBtn);
+            btnRow.setAlignment(Pos.CENTER_LEFT);
 
             String status = t.getStatus();
             if (status == null) {
                 status = "DEADLINE";
                 t.setStatus(status);
+            }
+
+            // Conditional visibility based on status
+            if (status.equals("DEADLINE")) {
+                btnRow.getChildren().add(0, startBtn);
+            } else if (status.equals("IN_PROGRESS")) {
+                btnRow.getChildren().add(0, doneBtn);
             }
 
             // updated - status color strip (MOVE HERE)
