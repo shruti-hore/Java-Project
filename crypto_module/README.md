@@ -101,6 +101,24 @@ Provides high-performance document security with binding to document context.
 - **Use Case:** Encrypting document content for synchronized storage.
 - **Why Counter Nonce:** Prevents nonce reuse while ensuring that the server and client can independently reconstruct the unique nonce for any document version.
 
+### 7. Team Key Envelope (Hybrid Encryption)
+**Class:** `TeamKeyEnvelope`
+**Methods:**
+- `byte[] wrap(byte[] teamKey, PublicKey recipientPubKey, PrivateKey myPrivateKey)`
+- `byte[] unwrap(byte[] envelope, PublicKey senderPubKey, PrivateKey myPrivateKey)`
+
+Securely shares AES team keys between users using X25519 and AES-GCM.
+- **Steps:**
+    1.  Computes **ECDH shared secret** using X25519.
+    2.  Derives a wrap key via **HKDF-SHA256** (info="team-key-wrap").
+    3.  Encrypts the team key using **AES-256-GCM** with a random nonce.
+- **Security Constraints:**
+    1.  Envelope format is `nonce[12] + ciphertext + tag[16]`.
+    2.  Intermediate keys (`sharedSecret`, `wrapKey`) are **zeroed** immediately after use.
+    3.  The input `teamKey` is **zeroed** after wrapping to ensure it doesn't linger.
+- **Use Case:** Inviting a new member to a team by securely sending the team's symmetric key.
+- **Why Hybrid Encryption:** Allows secure key exchange between parties who only know each other's public keys, with the full integrity protection of GCM.
+
 ---
 
 ## Global Security Rules
