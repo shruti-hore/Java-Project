@@ -1,5 +1,6 @@
 package service;
-
+import static com.mongodb.client.model.Updates.set;
+import static com.mongodb.client.model.Updates.combine;
 import com.mongodb.client.*;
 import model.Task;
 import org.bson.Document;
@@ -44,25 +45,40 @@ public class MongoService {
             // 🔥 CRITICAL FIX
             if (status == null) status = "DEADLINE";
 
-            list.add(new Task(id, title, desc, deadline, completed, status));
+            list.add(new Task(id.toString(), title, desc, deadline, completed, status));
         }
 
         return list;
     }
 
-    public void deleteTask(ObjectId id) {
-        collection.deleteOne(eq("_id", id));
+    public void deleteTask(String id) {
+        collection.deleteOne(eq("_id", new ObjectId(id)));
     }
 
-    public void updateStatus(ObjectId id, String status) {
-        if (status == null) status = "DEADLINE";
-
-        collection.updateOne(eq("_id", id),
-                new Document("$set", new Document("status", status)));
+    public void updateStatus(String id, String status) {
+        collection.updateOne(
+            eq("_id", new ObjectId(id)),
+            set("status", status)
+        );
     }
 
-    public void updateCompletion(ObjectId id, boolean completed) {
-        collection.updateOne(eq("_id", id),
-                new Document("$set", new Document("completed", completed)));
+    public void updateCompletion(String id, boolean completed) {
+        collection.updateOne(
+            eq("_id", new ObjectId(id)),
+            set("completed", completed)
+        );
+    }
+
+    public void updateTask(Task t) {
+        collection.updateOne(
+            eq("_id", new ObjectId(t.getId())),
+            combine(
+                set("title", t.getTitle()),
+                set("description", t.getDescription()),
+                set("deadline", t.getDeadline()),
+                set("status", t.getStatus()),
+                set("completed", t.isCompleted())
+            )
+        );
     }
 }

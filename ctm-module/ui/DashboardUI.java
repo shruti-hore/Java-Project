@@ -379,13 +379,20 @@ public class DashboardUI extends Application {
                     String newDesc = descField.getText();
                     LocalDate newDate = datePicker.getValue();
 
-                    if (newTitle.isEmpty() || newDate == null) {
+                    if (newTitle.isEmpty() || newDesc.isEmpty() || newDate == null) {
                         showError("Invalid input");
                         return;
                     }
 
-                    t.setStatus(t.getStatus()); // updated safety
-                    mongoService.updateStatus(t.getId(), t.getStatus()); // updated
+                    // update object
+                    t.setTitle(newTitle);
+                    t.setDescription(newDesc);
+                    t.setDeadline(newDate.toString());
+
+                    // (Temporary until API layer)
+                    // mongoService.deleteTask(t.getId());
+                    // mongoService.addTask(t);
+                    mongoService.updateTask(t);
 
                     refreshTasks();
                     editStage.close();

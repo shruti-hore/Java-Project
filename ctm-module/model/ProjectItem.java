@@ -1,11 +1,15 @@
+package model;
+
 public abstract class ProjectItem {
 
     protected String id;
     protected String title;
+    protected String status; // DEADLINE, IN_PROGRESS, DONE
 
-    public ProjectItem(String id, String title) {
+    public ProjectItem(String id, String title, String status) {
         this.id = id;
         this.title = title;
+        this.status = status;
     }
 
     public String getId() {
@@ -16,6 +20,14 @@ public abstract class ProjectItem {
         return title;
     }
 
-    // Abstract method (Polymorphism entry point)
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    // Polymorphism entry point
     public abstract String getDetails();
 }
