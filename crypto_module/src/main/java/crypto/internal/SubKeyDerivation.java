@@ -28,7 +28,9 @@ public class SubKeyDerivation {
         }
 
         // Enforcement: Validate info string
-        if (!"vault-key".equals(info) && !"auth-signing-key".equals(info)) {
+        if (!"vault-key".equals(info) && 
+            !"auth-signing-key".equals(info) && 
+            !"team-key-wrap".equals(info)) {
             throw new IllegalArgumentException("Unknown HKDF context: " + info);
         }
 
