@@ -119,6 +119,21 @@ Securely shares AES team keys between users using X25519 and AES-GCM.
 - **Use Case:** Inviting a new member to a team by securely sending the team's symmetric key.
 - **Why Hybrid Encryption:** Allows secure key exchange between parties who only know each other's public keys, with the full integrity protection of GCM.
 
+### 8. Payload Padding (256-byte PKCS#7)
+**Class:** `PaddingUtil`
+**Methods:**
+- `byte[] pad(byte[] plaintext)`
+- `byte[] unpad(byte[] padded)`
+
+Obfuscates payload sizes by aligning data to 256-byte boundaries.
+- **Security Constraints:**
+    - Uses **PKCS#7-style** padding where every pad byte equals the total padding length.
+    - **Block Size:** Fixed at **256 bytes**.
+    - **Alignment:** Always adds at least one byte of padding. Aligned inputs receive a full 256-byte extra block.
+    - **Verification:** `unpad` rejects invalid lengths, misaligned blocks, or incorrect padding patterns.
+- **Use Case:** Pre-processing JSON payloads before encryption to prevent length-based side-channel attacks.
+- **Why 256-byte Blocks:** Larger block sizes significantly increase the difficulty of inferring document content or type from the encrypted file size.
+
 ---
 
 ## Global Security Rules
