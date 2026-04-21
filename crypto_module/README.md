@@ -59,7 +59,26 @@ Computes a mutual 32-byte shared secret using a private key and a counterparty's
     - Raw ECDH output is **never returned**; it is immediately **SHA-256 hashed** to ensure uniform entropy.
     - The raw intermediate secret is zeroed in memory in a `finally` block.
 - **Use Case:** The foundation for all peer-to-peer encryption. Two users can arrive at the same AES key by only knowing each other's public keys.
-- **Why ECDH** X25519 allows any two parties to derive the same shared secret from their respective key pairs — without ever transmitting the secret itself.
+- **Why ECDH:** X25519 allows any two parties to derive the same shared secret from their respective key pairs — without ever transmitting the secret itself.
+
+### 5. Key Vault Seal / Unseal (AES-256-GCM)
+**Class:** `VaultService`
+**Methods:**
+- `byte[] seal(byte[] privateKeyBytes, byte[] vaultKey)`
+- `byte[] unseal(byte[] vaultBlob, byte[] vaultKey)`
+
+Protects sensitive private key material for database storage.
+- **Parameters:**
+    - `privateKeyBytes`: The raw private key bytes to protect.
+    - `vaultKey`: 32-byte key derived via HKDF (info="vault-key").
+    - `vaultBlob`: The output blob formatted as `nonce[12] + ciphertext + tag[16]`.
+- **Security Constraints:**
+    - Uses **AES-256-GCM** for authenticated encryption.
+    - Each operation uses a fresh 12-byte **SecureRandom nonce** (prepended to output).
+    - Plaintext `privateKeyBytes` are **zeroed** in a `finally` block after sealing.
+    - Authentication failures throw `AEADBadTagException` (never swallowed).
+- **Use Case:** Encrypting a user's private key before storing it in a database.
+- **Why AES-GCM:** Provides "authenticated encryption"—if even a single bit of the encrypted vault is tampered with, the unseal operation will fail instead of returning garbage.
 
 ---
 
