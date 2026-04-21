@@ -134,6 +134,19 @@ Obfuscates payload sizes by aligning data to 256-byte boundaries.
 - **Use Case:** Pre-processing JSON payloads before encryption to prevent length-based side-channel attacks.
 - **Why 256-byte Blocks:** Larger block sizes significantly increase the difficulty of inferring document content or type from the encrypted file size.
 
+### 9. BIP39 Fingerprint Generation
+**Class:** `FingerprintService`
+**Method:** `String generate(byte[] publicKeyA, byte[] publicKeyB)`
+
+Generates a human-verifiable 6-word mnemonic fingerprint from two public keys.
+- **Security Constraints:**
+    - **Commutativity:** Keys are normalized lexicographically (lower first) so that `generate(A, B) == generate(B, A)`.
+    - **Hashing:** Uses SHA-256 to derive the fingerprint material.
+    - **Mapping:** Maps hash bytes to indices (0-2047) for lookup in the bundled BIP39 English wordlist.
+    - **Wordlist:** Loads exactly 2048 words from the classpath resource `/bip39-english.txt`.
+- **Use Case:** Out-of-band verification where users compare 6 words to ensure they aren't victims of a man-in-the-middle attack.
+- **Why BIP39:** Words provide a significantly better user experience for manual verification compared to comparing long hex strings.
+
 ---
 
 ## Global Security Rules
