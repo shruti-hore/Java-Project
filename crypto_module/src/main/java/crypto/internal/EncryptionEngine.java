@@ -101,8 +101,9 @@ public class EncryptionEngine {
         if (nonce == null || nonce.length != NONCE_LENGTH) {
             throw new IllegalArgumentException("Nonce must be exactly 12 bytes");
         }
-        if (aad == null || aad.length != AAD_LENGTH) {
-            throw new IllegalArgumentException("AAD must be exactly 20 bytes");
+        // Enforcement: Allow 20 bytes (documents) or 0 bytes (envelopes)
+        if (aad == null || (aad.length != AAD_LENGTH && aad.length != 0)) {
+            throw new IllegalArgumentException("AAD must be exactly 20 bytes or 0 bytes");
         }
     }
 }
