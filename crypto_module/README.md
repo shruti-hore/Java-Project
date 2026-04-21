@@ -80,6 +80,27 @@ Protects sensitive private key material for database storage.
 - **Use Case:** Encrypting a user's private key before storing it in a database.
 - **Why AES-GCM:** Provides "authenticated encryption"—if even a single bit of the encrypted vault is tampered with, the unseal operation will fail instead of returning garbage.
 
+### 6. Document Encryption Engine (AES-256-GCM + Counter Nonce)
+**Classes:** `EncryptionEngine`, `NonceBuilder`
+**Methods:**
+- `byte[] encrypt(byte[] plaintext, byte[] teamKey, byte[] nonce, byte[] aad)`
+- `byte[] decrypt(byte[] ciphertext, byte[] teamKey, byte[] nonce, byte[] aad)`
+- `byte[] build(short teamKeyVersion, UUID docUuid, long counterValue)`
+
+Provides high-performance document security with binding to document context.
+- **Parameters:**
+    - `plaintext`: Padded content (CRY-08).
+    - `teamKey`: 32-byte AES key for the team.
+    - `nonce`: 12-byte deterministic nonce built from document metadata.
+    - `aad`: 20-byte Associated Data (`doc_uuid` + `version_seq`).
+- **Security Constraints:**
+    - Uses **AES-256-GCM** via Bouncy Castle.
+    - **Forbidden:** `SecureRandom` is prohibited for document nonces; they must be deterministic.
+    - **Binding:** Mandatory **AAD** ensures ciphertext cannot be moved between documents or versions.
+    - **Memory:** Plaintext bytes are **zeroed** in `finally` blocks.
+- **Use Case:** Encrypting document content for synchronized storage.
+- **Why Counter Nonce:** Prevents nonce reuse while ensuring that the server and client can independently reconstruct the unique nonce for any document version.
+
 ---
 
 ## Global Security Rules
