@@ -51,10 +51,12 @@ public class EncryptionEngine {
             
             return cipher.doFinal(plaintext);
         } catch (Exception e) {
-            throw new RuntimeException("Encryption failed", e);
+            throw new CryptoOperationException("Encryption failed", e);
         } finally {
             // Enforcement: Zeroing plaintext byte[]
             Arrays.fill(plaintext, (byte) 0);
+            // Enforcement: Zero teamKey (AES key material) after use
+            Arrays.fill(teamKey, (byte) 0);
         }
     }
 
@@ -90,7 +92,10 @@ public class EncryptionEngine {
             if (e.getCause() instanceof javax.crypto.AEADBadTagException) {
                 throw (javax.crypto.AEADBadTagException) e.getCause();
             }
-            throw new RuntimeException("Decryption failed", e);
+            throw new CryptoOperationException("Decryption failed", e);
+        } finally {
+            // Enforcement: Zero teamKey (AES key material) after use
+            Arrays.fill(teamKey, (byte) 0);
         }
     }
 

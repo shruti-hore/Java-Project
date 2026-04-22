@@ -65,30 +65,27 @@ public class CryptoDemonstration {
     private static void demoSharedSecret() {
         System.out.println("[PREVIEW CRY-04] ECDH Shared Secret Calculation");
         KeyPairService service = new KeyPairService();
+        EcdhService ecdhService = new EcdhService();
 
         // Create two parties
         X25519KeyPair alice = service.generateKeyPair();
-        X25519KeyPair bob = service.generateKeyPair();
+        X25519KeyPair bob   = service.generateKeyPair();
 
         System.out.println("Alice and Bob generated their own key pairs.");
 
         try {
-            // Alice calculates secret using Bob's public key
-            javax.crypto.KeyAgreement aliceAgreement = javax.crypto.KeyAgreement.getInstance("X25519", "BC");
-            aliceAgreement.init(alice.privateKey());
-            aliceAgreement.doPhase(service.loadPublicKey(bob.publicKeyBytes()), true);
-            byte[] aliceSecret = aliceAgreement.generateSecret();
+            // Enforcement: Use EcdhService which applies SHA-256 post-processing
+            // and zeros the raw intermediate secret — matches the production code path.
+            byte[] aliceSecret = ecdhService.computeSharedSecret(
+                    alice.privateKey(), service.loadPublicKey(bob.publicKeyBytes()));
 
-            // Bob calculates secret using Alice's public key
-            javax.crypto.KeyAgreement bobAgreement = javax.crypto.KeyAgreement.getInstance("X25519", "BC");
-            bobAgreement.init(bob.privateKey());
-            bobAgreement.doPhase(service.loadPublicKey(alice.publicKeyBytes()), true);
-            byte[] bobSecret = bobAgreement.generateSecret();
+            byte[] bobSecret = ecdhService.computeSharedSecret(
+                    bob.privateKey(), service.loadPublicKey(alice.publicKeyBytes()));
 
-            System.out.println("Alice's Shared Secret: " + HexFormat.of().formatHex(aliceSecret));
-            System.out.println("Bob's Shared Secret:   " + HexFormat.of().formatHex(bobSecret));
-            System.out.println("Secrets Match:         " + java.util.Arrays.equals(aliceSecret, bobSecret));
-            System.out.println("Result: Both parties arrived at the same secret without ever sharing their private keys.");
+            System.out.println("Alice's Shared Secret (SHA-256): " + HexFormat.of().formatHex(aliceSecret));
+            System.out.println("Bob's Shared Secret   (SHA-256): " + HexFormat.of().formatHex(bobSecret));
+            System.out.println("Secrets Match:                   " + java.util.Arrays.equals(aliceSecret, bobSecret));
+            System.out.println("Result: Both parties arrived at the same SHA-256 post-processed secret.");
         } catch (Exception e) {
             System.err.println("ECDH Demo Failed: " + e.getMessage());
         }
