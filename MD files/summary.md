@@ -14,7 +14,7 @@ The `Task` class is the central data model for the application, representing an 
     - `description` (String): Detailed task description.
     - `deadline` (String): Due date in string format (ISO-8601).
     - `completed` (boolean): Tracks if the task is finished.
-    - `notes` (String): Additional notes (new feature).
+    - `status` (String): Current Kanban state (DEADLINE, IN_PROGRESS, DONE).
 - **Constructor:**
     - `Task(id, title, description, deadline, completed, status)`: Initializes a task with all core properties.
 - **Key Methods:**
@@ -41,7 +41,7 @@ The `MongoService` class handles all database interactions using the MongoDB Jav
 
 ---
 
-## 3. UI Layer: [DashboardUI.java](file:///c:/Users/Shruti/CODES/Java-Project/ctm-module/ui/DashboardUI.java)
+## 3. UI Layer: [DashboardUI.java](file:///c:/Users/Shruti/CODES/Java-Project/ctm_module/ui/DashboardUI.java)
 The `DashboardUI` class is the main JavaFX application providing the graphical user interface.
 
 ### Class: `DashboardUI`
@@ -56,11 +56,14 @@ The `DashboardUI` class is the main JavaFX application providing the graphical u
     - `start(Stage stage)`: Initializes the UI layout, sets up the sidebar, search bar, statistics panel, and Kanban board.
     - `refreshTasks()`: The most critical logic method. It:
         1. Filters tasks based on `currentFilter` and `searchText`.
-        2. Clears the Kanban columns.
+        2. Clears the Kanban columns and adds "Empty State" labels if needed.
         3. Creates "Task Cards" (styled VBoxes) for each task.
-        4. Implements **Conditional Visibility** for buttons (e.g., only show "Start" in the Deadline column).
-        5. Updates the Statistics dashboard.
-    - `updateStats()`: Calculates counts for Total, Completed, and Pending tasks.
+        4. Implements **Smart Deadline Indicators** (Red/Orange/Teal/Green).
+        5. Sets up **Drag and Drop** source logic for each card.
+        6. Updates the Statistics dashboard (Total, Done, Due Soon).
+    - `createTaskCard(Task t)`: Extracted logic for modular card creation.
+    - `setupColumnDragAndDrop(VBox column, String status)`: Configures Kanban columns to accept dropped tasks.
+    - `showConfirmation(String title, String content)`: Helper for user safety dialogs.
 - **UI Helper Methods:**
     - `styleButton(Button btn, String color, String hoverColor, String textColor)`: Applies consistent CSS styling, hover animations, and cursor changes to buttons.
     - `highlightSidebar(Label selected, Label... others)`: Manages the visual state of the sidebar navigation.
@@ -103,8 +106,8 @@ At present, the implementation reflects an **early-stage functional UI system**,
   - Kanban board (Deadline / In Progress / Done)
 
 ### Data Layer (Current)
-- Direct interaction with MongoDB via `MongoService`
-- Tasks are stored and retrieved in **plaintext**
+- Interaction via `TaskService` (Clean Architecture abstraction)
+- Tasks are stored and retrieved in **plaintext** (MongoDB via `MongoService`)
 - No encryption or abstraction layer exists yet
 
 ### Model Layer
@@ -122,12 +125,13 @@ At present, the implementation reflects an **early-stage functional UI system**,
 ## Functional Capabilities (Implemented)
 
 - Create task
-- Edit task
-- Delete task
-- Update task status (Deadline → In Progress → Done)
-- Search tasks (title + description)
-- Filter tasks (Completed / Pending / All)
-- Display tasks in Kanban board format
+- Edit task with date picker
+- Delete task with confirmation dialog
+- Update task status via **Drag and Drop** (Deadline ↔ In Progress ↔ Done)
+- Smart Deadline coloring (Overdue/Today/Upcoming)
+- Search tasks (title)
+- Filter tasks (Dashboard / My Tasks)
+- Display tasks in Kanban board format with empty state messages
 - Real-time UI refresh on actions
 
 ---

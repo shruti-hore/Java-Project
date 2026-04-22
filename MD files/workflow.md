@@ -229,7 +229,9 @@ pending_ops
 ## Summary
 
 Current workflow:
-- Direct UI → MongoDB (plaintext)
+- UI → TaskService → MongoService → MongoDB (plaintext)
+- Task movement via Drag and Drop
+- Real-time UI refresh with Smart Deadline coloring
 
 Target workflow:
 - UI → Crypto → API → MongoDB (encrypted blobs)
