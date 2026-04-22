@@ -60,7 +60,7 @@ public class VaultService {
             
             return vaultBlob;
         } catch (Exception e) {
-            throw new RuntimeException("Vault seal failed", e);
+            throw new CryptoOperationException("Vault seal failed", e);
         } finally {
             // Enforcement: privateKeyBytes not zeroed after seal() is a failure mode
             Arrays.fill(privateKeyBytes, (byte) 0);
@@ -100,7 +100,7 @@ public class VaultService {
             // Enforcement: GCM tag failure must throw AEADBadTagException.
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Vault unseal failed", e);
+            throw new CryptoOperationException("Vault unseal failed", e);
         } finally {
             // Enforcement: Zero vaultKey (AES key material) after use
             Arrays.fill(vaultKey, (byte) 0);

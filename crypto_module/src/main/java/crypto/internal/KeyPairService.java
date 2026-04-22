@@ -34,7 +34,7 @@ public class KeyPairService {
             return new X25519KeyPair(pubBytes, kp.getPrivate());
             
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-            throw new RuntimeException("X25519 KeyPair generation failed", e);
+            throw new CryptoOperationException("X25519 KeyPair generation failed", e);
         }
     }
 

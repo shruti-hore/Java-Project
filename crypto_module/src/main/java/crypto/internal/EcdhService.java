@@ -25,7 +25,7 @@ public class EcdhService {
      * @param theirPublicKey Counterparty's X25519 public key.
      * @return 32-byte hashed shared secret.
      * @throws IllegalArgumentException if keys are null.
-     * @throws RuntimeException if the ECDH operation fails.
+     * @throws CryptoOperationException if the ECDH operation fails.
      */
     public byte[] computeSharedSecret(PrivateKey myPrivateKey, PublicKey theirPublicKey) {
         if (myPrivateKey == null || theirPublicKey == null) {
@@ -47,9 +47,9 @@ public class EcdhService {
 
         } catch (InvalidKeyException e) {
             // Propagate for mandatory adversarial tests (e.g., Ed25519 check)
-            throw new RuntimeException(e);
+            throw new CryptoOperationException("Invalid key for ECDH", e);
         } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
-            throw new RuntimeException("X25519 ECDH not supported", e);
+            throw new CryptoOperationException("X25519 ECDH not supported", e);
         } finally {
             // Enforcement: Raw shared secret zeroed immediately after hashing
             if (rawSecret != null) {

@@ -22,7 +22,7 @@ public class FingerprintService {
     public FingerprintService() {
         this.wordlist = loadWordlist();
         if (wordlist.length != 2048) {
-            throw new RuntimeException("BIP39 wordlist must contain exactly 2048 words. Found: " + wordlist.length);
+            throw new CryptoOperationException("BIP39 wordlist must contain exactly 2048 words. Found: " + wordlist.length);
         }
     }
 
@@ -71,14 +71,14 @@ public class FingerprintService {
 
             return sb.toString();
         } catch (Exception e) {
-            throw new RuntimeException("Fingerprint generation failed", e);
+            throw new CryptoOperationException("Fingerprint generation failed", e);
         }
     }
 
     private String[] loadWordlist() {
         try (InputStream is = getClass().getResourceAsStream("/bip39-english.txt")) {
             if (is == null) {
-                throw new RuntimeException("Wordlist resource not found: /bip39-english.txt");
+                throw new CryptoOperationException("Wordlist resource not found: /bip39-english.txt");
             }
             List<String> words = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
@@ -92,7 +92,7 @@ public class FingerprintService {
             }
             return words.toArray(new String[0]);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to load BIP39 wordlist", e);
+            throw new CryptoOperationException("Failed to load BIP39 wordlist", e);
         }
     }
 
