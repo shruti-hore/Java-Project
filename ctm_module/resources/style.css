@@ -97,9 +97,9 @@
     -fx-background-radius: 5;
 }
 
-.priority-important, .priority-high { -fx-background-color: rgba(231, 76, 60, 0.2); -fx-text-fill: #e74c3c; }
-.priority-medium { -fx-background-color: rgba(230, 126, 34, 0.2); -fx-text-fill: #e67e22; }
-.priority-low { -fx-background-color: rgba(46, 204, 113, 0.2); -fx-text-fill: #2ecc71; }
+.priority-high { -fx-background-color: rgba(231, 76, 60, 0.3); -fx-text-fill: #ff6b6b; -fx-border-color: #ff6b6b; -fx-border-width: 0.5; }
+.priority-medium { -fx-background-color: rgba(230, 126, 34, 0.3); -fx-text-fill: #f39c12; -fx-border-color: #f39c12; -fx-border-width: 0.5; }
+.priority-low { -fx-background-color: rgba(46, 204, 113, 0.3); -fx-text-fill: #2ecc71; -fx-border-color: #2ecc71; -fx-border-width: 0.5; }
 
 .task-title-bold {
     -fx-font-size: 16px;

@@ -5,16 +5,20 @@ import model.Task;
 public class TaskService {
 
     private MongoService mongo = new MongoService();
+    private WorkflowService workflow = new WorkflowService();
 
-    public List<Task> getAllTasks() {
-        return mongo.getTasks();
+    public List<Task> getAllTasks(String userId, String teamId) {
+        return mongo.getTasks(userId, teamId);
     }
 
     public void addTask(Task t) {
-        mongo.addTask(t);
+        workflow.applyRules(t);
+        String id = mongo.addTask(t);
+        t.setId(id);
     }
 
     public void updateTask(Task t) {
+        workflow.applyRules(t);
         mongo.updateTask(t);
     }
 

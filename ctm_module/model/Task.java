@@ -9,15 +9,25 @@ public class Task extends ProjectItem {
     private boolean completed;
     private String priority;
 
+    private String userId;
+    private String teamId;
+
     public Task(String id, String title, String description,
-                String deadline, boolean completed, String status, String priority) {
+                String deadline, boolean completed, String status, String priority, String userId, String teamId) {
 
         super(id, title, status);
         this.description = description;
         this.deadline = deadline;
         this.completed = completed;
         this.priority = priority;
+        this.userId = userId;
+        this.teamId = teamId;
     }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+    public String getTeamId() { return teamId; }
+    public void setTeamId(String teamId) { this.teamId = teamId; }
 
     public String getDescription() { return description; }
     public String getDeadline() { return deadline; }

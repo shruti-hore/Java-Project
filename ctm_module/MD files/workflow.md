@@ -105,6 +105,24 @@ Executed entirely in UI memory.
 
 ---
 
+## 1.5 View Switching Flow
+
+Sidebar Action → Main Controller → View Switch
+
+Steps:
+1. User clicks a sidebar navigation item (e.g., "Dashboard" or "My Tasks").
+2. `SidebarView` captures the click and sends the corresponding `viewKey` to `DashboardUI`.
+3. `DashboardUI` executes the switch:
+   ```java
+   switch(viewKey) {
+       case "DASHBOARD": mainRoot.setCenter(dashboardView); break;
+       case "KANBAN": mainRoot.setCenter(myTasksView); break;
+   }
+   ```
+4. The center content is swapped instantly while maintaining the global sidebar and task state.
+
+---
+
 # 2. FUTURE WORKFLOW (REQUIRED ARCHITECTURE)
 
 ---

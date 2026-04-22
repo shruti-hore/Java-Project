@@ -41,34 +41,30 @@ The `MongoService` class handles all database interactions using the MongoDB Jav
 
 ---
 
-## 3. UI Layer: [DashboardUI.java](file:///c:/Users/Shruti/CODES/Java-Project/ctm_module/ui/DashboardUI.java)
-The `DashboardUI` class is the main JavaFX application providing the graphical user interface.
+## 3. UI Layer: [ui/](file:///c:/Users/Shruti/CODES/Java-Project/ctm_module/ui/)
+The UI is built using a modular view-based architecture to separate the Dashboard analytics from the Kanban task management.
 
-### Class: `DashboardUI`
-*Inherits from `javafx.application.Application`*
+### Main Controller: `DashboardUI`
+- **Role**: Entry point, handles authentication, and manages view switching.
+- **Key Methods**:
+    - `start(Stage stage)`: Initializes the application stack and shows the login screen.
+    - `initializeDashboard()`: Sets up the main `BorderPane` with a `SidebarView` and `DashboardView`.
+    - `handleEditAction(Task t)`: Centralized handler for adding or editing tasks.
 
-- **Core Fields:**
-    - `taskList`: An `ObservableList` used to synchronize UI updates with the underlying data.
-    - `currentFilter`: Tracks the current view mode (ALL, COMPLETED, PENDING).
-    - `searchText`: Stores the current search query for real-time filtering.
-    - `deadlineColumn`, `inProgressColumn`, `doneColumn`: VBox containers for the Kanban board columns.
-- **Main Logic Methods:**
-    - `start(Stage stage)`: Initializes the UI layout, sets up the sidebar, search bar, statistics panel, and Kanban board.
-    - `refreshTasks()`: The most critical logic method. It:
-        1. Filters tasks based on `currentFilter` and `searchText`.
-        2. Clears the Kanban columns and adds "Empty State" labels if needed.
-        3. Creates "Task Cards" (styled VBoxes) for each task.
-        4. Implements **Smart Deadline Indicators** (Red/Orange/Teal/Green).
-        5. Sets up **Drag and Drop** source logic for each card.
-        6. Updates the Statistics dashboard (Total, Done, Due Soon).
-    - `createTaskCard(Task t)`: Extracted logic for modular card creation.
-    - `setupColumnDragAndDrop(VBox column, String status)`: Configures Kanban columns to accept dropped tasks.
-    - `showConfirmation(String title, String content)`: Helper for user safety dialogs.
-- **UI Helper Methods:**
-    - `styleButton(Button btn, String color, String hoverColor, String textColor)`: Applies consistent CSS styling, hover animations, and cursor changes to buttons.
-    - `highlightSidebar(Label selected, Label... others)`: Manages the visual state of the sidebar navigation.
-    - `addHoverEffect(Label label)`: Adds interactive color changes to sidebar items.
-    - `showError(String msg)`: Displays JavaFX Error Alerts for invalid user inputs.
+### Views: `ui/views/`
+- **`SidebarView`**: Static navigation panel for switching between Dashboard, My Tasks, Calendar, and Settings.
+- **`DashboardView`**: Read-only analytics workspace featuring:
+    - **Welcome Banner**: Dynamic greeting with pending task count.
+    - **Stats Cards**: High-level overview of Total, In Progress, Pending, and Completed tasks.
+    - **Analytics Charts**: Pie chart for distribution and Line chart for progress trends.
+- **`MyTasksView`**: Interactive Kanban board for task manipulation:
+    - **Real-time Search**: Filters tasks by title as you type.
+    - **Kanban Columns**: Interactive columns (To Do, In Progress, Done) with Drag & Drop support.
+
+### Components: `ui/components/`
+- **`StatCard`**: Styled container for displaying key performance metrics.
+- **`TaskCard`**: Modular task representation with context-aware buttons (Start/Done/Edit/Delete) and drag-and-drop capabilities.
+
 
 ---
 

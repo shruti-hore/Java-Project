@@ -4,24 +4,26 @@
 The **Collaborative Task Module (CTM)** is the core task management engine for the Secure Team Task Manager. It provides a robust interface for creating, tracking, and managing tasks with real-time status updates and persistent storage.
 
 ## Key Features
-- **Kanban Workflow**: Visualize tasks across three stages: *Deadline*, *In Progress*, and *Done*.
+- **Dashboard Workspace**: High-level productivity overview with analytics charts, statistics cards, and a welcome summary.
+- **My Tasks Workspace**: Fully interactive Kanban board for task manipulation (Add/Edit/Delete) with Drag & Drop support.
+- **Modular Navigation**: Integrated sidebar for seamless switching between different functional workspaces.
 - **MongoDB Persistence**: Seamless data storage using MongoDB, ensuring task data is preserved across sessions.
-- **Dynamic Filtering & Search**: Quickly find tasks via the search bar or filter by *All*, *Completed*, or *Pending* status.
-- **Task Statistics**: Real-time dashboard stats showing total, completed, and pending task counts.
-- **Responsive UI**: Modern JavaFX interface featuring a sleek sidebar, hover effects, and status-coded task cards.
+- **Real-time Search**: Instant task filtering by title in the My Tasks view.
+- **Secure Validations**: Integrated safety checks for task dates (no past dates) and user emails (@gmail.com requirement).
 
 ## Responsibilities
-- **Task Lifecycle Management**: Handling creation, editing, status transitions (DEADLINE, IN_PROGRESS, DONE), and deletion of tasks.
+- **Modular UI Orchestration**: Managing navigation and view-switching between separate Dashboard and My Tasks panels.
+- **Task Lifecycle Management**: Handling creation, editing, status transitions (DEADLINE, IN_PROGRESS, DONE), and deletion.
 - **Data Persistence**: Interfacing with MongoDB via `MongoService` for CRUD operations and document mapping.
-- **UI State Coordination**: Synchronizing the Kanban board and task lists with the underlying database.
-- **Search & Filter Logic**: Implementing local search and status-based filtering for improved UX.
+- **Business Logic Integration**: Applying workflow rules and validations before persistence.
 
 ## Structure
-- `model` → Data classes (e.g., `Task.java` defining task attributes and status)
-- `service` → Business logic and database interaction (`MongoService.java`)
-- `ui` → JavaFX components and dashboard layout (`DashboardUI.java`)
-- `utils` → Helper functions for data formatting and validation
-- `dto` → Data transfer objects for internal communication
+- `ui/views/` → Primary workspace panels (`DashboardView`, `MyTasksView`, `SidebarView`)
+- `ui/components/` → Reusable UI elements (`TaskCard`, `StatCard`)
+- `model/` → Data classes (e.g., `Task.java`, `User.java`)
+- `service/` → Business logic (`TaskService.java`) and database interaction (`MongoService.java`)
+- `utils/` → Security validations and session management
+- `lib/` → External dependencies (MongoDB Driver, JavaFX)
 
 ## Tech Stack
 - **Frontend**: JavaFX (with custom CSS styling)
