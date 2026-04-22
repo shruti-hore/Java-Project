@@ -64,6 +64,8 @@ public class VaultService {
         } finally {
             // Enforcement: privateKeyBytes not zeroed after seal() is a failure mode
             Arrays.fill(privateKeyBytes, (byte) 0);
+            // Enforcement: Zero vaultKey (AES key material) after use
+            Arrays.fill(vaultKey, (byte) 0);
         }
     }
 
@@ -99,6 +101,9 @@ public class VaultService {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Vault unseal failed", e);
+        } finally {
+            // Enforcement: Zero vaultKey (AES key material) after use
+            Arrays.fill(vaultKey, (byte) 0);
         }
     }
 }

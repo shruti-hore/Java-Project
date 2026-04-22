@@ -20,6 +20,12 @@ public class SubKeyDerivation {
      * @param info      Context label (e.g., "vault-key", "auth-signing-key").
      * @return 32-byte derived sub-key.
      * @throws IllegalArgumentException if input is invalid or info is unknown.
+     * @apiNote The {@code masterKey} is intentionally <strong>not</strong> zeroed inside this
+     *          method. Multiple sub-keys (e.g., "vault-key", "auth-signing-key", "team-key-wrap")
+     *          are typically derived from the same master key in sequence; zeroing it here would
+     *          corrupt subsequent derivation calls. The <strong>caller is responsible</strong> for
+     *          zeroing {@code masterKey} via {@code Arrays.fill(masterKey, (byte) 0)} once all
+     *          required sub-keys have been derived.
      */
     public byte[] derive(byte[] masterKey, String info) {
         // Enforcement: Validate input length
@@ -48,7 +54,7 @@ public class SubKeyDerivation {
         byte[] subKey = new byte[OUTPUT_LENGTH];
         generator.generateBytes(subKey, 0, OUTPUT_LENGTH);
 
-        // Note: masterKey is NOT zeroed here as it is managed by the caller
+        // Caller-managed: masterKey is NOT zeroed here — see @apiNote in Javadoc above.
         return subKey;
     }
 }
