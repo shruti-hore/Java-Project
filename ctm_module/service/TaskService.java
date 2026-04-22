@@ -28,9 +28,18 @@ public class TaskService {
     }
 
     public void markDone(Task t) {
-        t.setStatus("DONE");
-        t.setCompleted(true);
-        mongo.updateStatus(t.getId(), "DONE");
-        mongo.updateCompletion(t.getId(), true);
+        updateStatus(t, "DONE");
+    }
+
+    public void updateStatus(Task t, String status) {
+        t.setStatus(status);
+        if (status.equals("DONE")) {
+            t.setCompleted(true);
+            mongo.updateCompletion(t.getId(), true);
+        } else {
+            t.setCompleted(false);
+            mongo.updateCompletion(t.getId(), false);
+        }
+        mongo.updateStatus(t.getId(), status);
     }
 }

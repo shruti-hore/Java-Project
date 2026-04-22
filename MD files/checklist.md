@@ -15,12 +15,19 @@
     - Calendar (placeholder)
     - Settings (placeholder)
     - Logout (placeholder)
-- Kanban board with 3 columns (Deadline / In Progress / Done)
+- Kanban board with Drag and Drop (JavaFX Dragboard API)
+- Smart Deadline Indicators:
+    - Red (Overdue)
+    - Orange (Due Today)
+    - Blue (In Progress)
+    - Green (Done)
 - Task statistics:
     - Total
     - Done (Completed)
-    - Due Soon (within 48 hours)
+    - Due Soon (within 48-72 hours)
 - Analytics Panel placeholder (footer)
+- Confirmation dialogs for critical actions (Delete)
+- Empty state messages for columns
 
 ---
 
@@ -52,8 +59,8 @@
 
 ## 2. PARTIALLY IMPLEMENTED
 
+- Clean Architecture: Full separation between UI and Data layer (via TaskService)
 - Notes field exists in model but not used in UI
-- No separation between UI and data layer (tight coupling)
 
 ---
 

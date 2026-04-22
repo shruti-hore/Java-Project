@@ -25,7 +25,8 @@ public class MongoService {
                 .append("description", task.getDescription())
                 .append("deadline", task.getDeadline())
                 .append("completed", task.isCompleted())
-                .append("status", task.getStatus());
+                .append("status", task.getStatus())
+                .append("priority", task.getPriority());
 
         collection.insertOne(doc);
     }
@@ -40,10 +41,12 @@ public class MongoService {
             String deadline = doc.getString("deadline");
             Boolean completed = doc.getBoolean("completed");
             String status = doc.getString("status");
+            String priority = doc.getString("priority");
 
             if (status == null) status = "DEADLINE";
+            if (priority == null) priority = "Low";
 
-            list.add(new Task(id.toString(), title, desc, deadline, completed, status));
+            list.add(new Task(id.toString(), title, desc, deadline, completed, status, priority));
         }
 
         return list;
@@ -75,7 +78,8 @@ public class MongoService {
                 set("description", t.getDescription()),
                 set("deadline", t.getDeadline()),
                 set("status", t.getStatus()),
-                set("completed", t.isCompleted())
+                set("completed", t.isCompleted()),
+                set("priority", t.getPriority())
             )
         );
     }
