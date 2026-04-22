@@ -7,8 +7,6 @@ public class Task extends ProjectItem {
     private String description;
     private String deadline;
     private boolean completed;
-    private String notes; // new feature
-
     public Task(String id, String title, String description,
                 String deadline, boolean completed, String status) {
 
@@ -26,9 +24,6 @@ public class Task extends ProjectItem {
     public void setDescription(String description) { this.description = description; }
     public void setDeadline(String deadline) { this.deadline = deadline; }
     public void setCompleted(boolean completed) { this.completed = completed; }
-
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
 
     @Override
     public String getDetails() {

@@ -39,10 +39,8 @@ public class MongoService {
             String desc = doc.getString("description");
             String deadline = doc.getString("deadline");
             Boolean completed = doc.getBoolean("completed");
-
             String status = doc.getString("status");
 
-            // 🔥 CRITICAL FIX
             if (status == null) status = "DEADLINE";
 
             list.add(new Task(id.toString(), title, desc, deadline, completed, status));

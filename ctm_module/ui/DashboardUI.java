@@ -8,14 +8,16 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+// updated
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
-import javafx.scene.control.Label; // updated
+import javafx.scene.control.Label;
 import java.time.LocalDate;
 
 import model.Task;
+import service.TaskService;
 import service.MongoService;
 
 public class DashboardUI extends Application {
@@ -26,47 +28,43 @@ public class DashboardUI extends Application {
 
     private Label totalLabel;
     private Label completedLabel;
-    private Label pendingLabel;
+    private Label dueSoonLabel;
+
+    // Theme Colors
+    private static final String BG_COLOR = "#1a1a2e";
+    private static final String SIDEBAR_COLOR = "#16213e";
+    private static final String CARD_BG = "#0f3460";
+    private static final String ACCENT_COLOR = "#1abc9c";
+    private static final String TEXT_COLOR = "#ffffff";
+    private static final String MUTED_TEXT = "#95a5a6";
 
     // kanban
     private VBox deadlineColumn;
     private VBox inProgressColumn;
     private VBox doneColumn;
 
-    private MongoService mongoService = new MongoService(); // updated
+    private TaskService taskService = new TaskService(); // updated
 
     private void highlightSidebar(Label selected, Label... others) {
-        selected.setStyle(
-            "-fx-text-fill: white;" +
-            "-fx-font-size: 14px;" +
-            "-fx-padding: 10 15;" +
-            "-fx-background-radius: 10;" +
-            "-fx-background-color: #1abc9c;"
-        );
+        selected.setStyle("-fx-text-fill: white; -fx-font-size: 15px; -fx-padding: 12 20; -fx-background-color: " + ACCENT_COLOR + "; -fx-background-radius: 8; -fx-cursor: hand;");
 
         for (Label l : others) {
-            l.setStyle(
-                "-fx-text-fill: white;" +
-                "-fx-font-size: 14px;" +
-                "-fx-padding: 10 15;" +
-                "-fx-background-radius: 10;"
-            );
+            if (l != null) {
+                l.setStyle("-fx-text-fill: " + MUTED_TEXT + "; -fx-font-size: 15px; -fx-padding: 12 20; -fx-cursor: hand;");
+            }
         }
     }
 
     private void addHoverEffect(Label label) {
         label.setOnMouseEntered(e -> {
-            label.setStyle(label.getStyle() + "-fx-background-color: #16a085;");
+            if (!label.getStyle().contains(ACCENT_COLOR)) {
+                label.setStyle(label.getStyle() + "-fx-background-color: #24345d; -fx-background-radius: 8;");
+            }
         });
 
         label.setOnMouseExited(e -> {
-            if (!label.getStyle().contains("#1abc9c")) {
-                label.setStyle(
-                    "-fx-text-fill: white;" +
-                    "-fx-font-size: 14px;" +
-                    "-fx-padding: 10 15;" +
-                    "-fx-background-radius: 10;"
-                );
+            if (!label.getStyle().contains(ACCENT_COLOR)) {
+                label.setStyle("-fx-text-fill: " + MUTED_TEXT + "; -fx-font-size: 15px; -fx-padding: 12 20; -fx-cursor: hand;");
             }
         });
     }
@@ -87,198 +85,181 @@ public class DashboardUI extends Application {
     public void start(Stage stage) {
 
         // LOAD DATA
-        taskList = FXCollections.observableArrayList(mongoService.getTasks()); // updated
-        taskList.sort((a, b) -> a.getDeadline().toString().compareTo(b.getDeadline().toString())); // updated
+        taskList = FXCollections.observableArrayList(taskService.getAllTasks());
+        taskList.sort((a, b) -> a.getDeadline().compareTo(b.getDeadline()));
 
-        Label heading = new Label("Secure Task Manager Dashboard");
-        heading.setStyle(
-            "-fx-font-size: 20px;" +
-            "-fx-font-weight: bold;" +
-            "-fx-text-fill: #2c3e50;"
-        );
-
-        TextField titleInput = new TextField();
-        titleInput.setPromptText("Task Title");
-
-        TextField descriptionInput = new TextField();
-        descriptionInput.setPromptText("Task Description");
-
-        DatePicker deadlineInput = new DatePicker();
-
-        // Disable past dates
-        deadlineInput.setDayCellFactory(picker -> new DateCell() {
-            @Override
-            public void updateItem(LocalDate date, boolean empty) {
-                super.updateItem(date, empty);
-                setDisable(empty || date.isBefore(LocalDate.now()));
-            }
-        });
-
-        Button addBtn = new Button("Add Task");
-        styleButton(addBtn, "#1abc9c", "#16a085", "white");
-
-        // ADD TASK
-        addBtn.setOnAction(e -> {
-
-            String t = titleInput.getText();
-            String desc = descriptionInput.getText();
-            LocalDate d = deadlineInput.getValue();
-
-            if (t.isEmpty() || desc.isEmpty() || d == null) {
-                showError("Enter all fields");
-                return;
-            }
-
-            Task task = new Task(null, t, desc, d.toString(), false, "DEADLINE"); // updated
-
-            mongoService.addTask(task); // updated
-            taskList.add(task);
-
-            taskList.sort((a, b) -> a.getDeadline().compareTo(b.getDeadline()));
-
-            titleInput.clear();
-            descriptionInput.clear();
-            deadlineInput.setValue(null);
-
-            refreshTasks();
-        });
-
-        HBox inputBox = new HBox(10, titleInput, descriptionInput, deadlineInput, addBtn);
-        inputBox.setAlignment(Pos.CENTER);
-        inputBox.setStyle("-fx-padding: 10;");
-
-        // SEARCH
+        // --- TOP BAR ---
         TextField searchField = new TextField();
-        searchField.setPromptText("Search...");
-
+        searchField.setPromptText("Search tasks...");
+        searchField.setPrefWidth(300);
+        searchField.setStyle("-fx-background-color: #0f3460; -fx-text-fill: white; -fx-background-radius: 15; -fx-padding: 8 15;");
         searchField.textProperty().addListener((obs, o, n) -> {
             searchText = n.toLowerCase();
             refreshTasks();
         });
 
-        // STATS
+        Button profileBtn = new Button("PROFILE");
+        styleButton(profileBtn, "#16213e", "#0f3460", "white");
+        Button notifyBtn = new Button("NOTIFICATIONS");
+        styleButton(notifyBtn, "#16213e", "#0f3460", "white");
+
+        HBox topBar = new HBox(20, searchField, new Region(), notifyBtn, profileBtn);
+        HBox.setHgrow(topBar.getChildren().get(1), Priority.ALWAYS);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setStyle("-fx-background-color: " + SIDEBAR_COLOR + "; -fx-padding: 15 30;");
+
+        // --- HEADER ---
+        Label welcome = new Label("WELCOME BACK, USER!");
+        welcome.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
+
         totalLabel = new Label();
         completedLabel = new Label();
-        pendingLabel = new Label();
+        dueSoonLabel = new Label();
+        
+        totalLabel.setStyle("-fx-text-fill: " + MUTED_TEXT + ";");
+        completedLabel.setStyle("-fx-text-fill: #2ecc71;");
+        dueSoonLabel.setStyle("-fx-text-fill: #e74c3c;");
 
-        // updated
-        totalLabel.setStyle("-fx-font-weight: bold;");
-        completedLabel.setStyle("-fx-text-fill: green;");
-        pendingLabel.setStyle("-fx-text-fill: red;");
+        HBox headerStats = new HBox(30, totalLabel, completedLabel, dueSoonLabel);
+        VBox header = new VBox(10, welcome, headerStats);
+        header.setStyle("-fx-padding: 20 30;");
 
-        HBox statsBox = new HBox(30, totalLabel, completedLabel, pendingLabel);
+        // --- SIDEBAR ---
+        Label dashboardNav = new Label("Dashboard");
+        Label myTasksNav = new Label("My Tasks");
+        Label categoriesNav = new Label("Categories");
+        Label calendarNav = new Label("Calendar");
+        Label settingsNav = new Label("Settings");
+        Label logoutNav = new Label("Logout");
 
-        statsBox.setAlignment(Pos.CENTER);
-
-        VBox topBox = new VBox(15, heading, inputBox, searchField, statsBox);
-        topBox.setAlignment(Pos.CENTER);
-
-        // SIDEBAR
-        Label allTasks = new Label("All Tasks");
-        Label completed = new Label("Completed");
-        Label pending = new Label("Pending");
-
-        // Base style
-        String baseStyle =
-            "-fx-text-fill: white;" +
-            "-fx-font-size: 14px;" +
-            "-fx-padding: 10 15;" +
-            "-fx-background-radius: 10;";
-
-        // Apply default styles
-        allTasks.setStyle(baseStyle + "-fx-background-color: #1abc9c;");
-        completed.setStyle(baseStyle);
-        pending.setStyle(baseStyle);
-
-        // Click actions
-        allTasks.setOnMouseClicked(e -> {
+        String navStyle = "-fx-text-fill: " + MUTED_TEXT + "; -fx-font-size: 15px; -fx-padding: 12 20; -fx-cursor: hand;";
+        for (Label l : new Label[]{dashboardNav, myTasksNav, categoriesNav, calendarNav, settingsNav, logoutNav}) {
+            l.setStyle(navStyle);
+            l.setMaxWidth(Double.MAX_VALUE);
+            addHoverEffect(l);
+        }
+        
+        dashboardNav.setStyle(navStyle + "-fx-background-color: " + ACCENT_COLOR + "; -fx-text-fill: white; -fx-background-radius: 8;");
+        
+        myTasksNav.setOnMouseClicked(e -> {
             currentFilter = "ALL";
-            highlightSidebar(allTasks, completed, pending);
+            highlightSidebar(myTasksNav, dashboardNav, categoriesNav, calendarNav, settingsNav, logoutNav);
             refreshTasks();
         });
 
-        completed.setOnMouseClicked(e -> {
-            currentFilter = "COMPLETED";
-            highlightSidebar(completed, allTasks, pending);
+        VBox navBox = new VBox(5, dashboardNav, myTasksNav, categoriesNav, calendarNav, new Region(), settingsNav, logoutNav);
+        VBox.setVgrow(navBox.getChildren().get(4), Priority.ALWAYS);
+        navBox.setStyle("-fx-background-color: " + SIDEBAR_COLOR + "; -fx-padding: 30 15;");
+        navBox.setPrefWidth(220);
+
+        // --- TASK CREATION (Moved to Sidebar bottom or separate panel) ---
+        TextField titleInput = new TextField(); titleInput.setPromptText("Title");
+        TextField descInput = new TextField(); descInput.setPromptText("Description");
+        DatePicker dateInput = new DatePicker();
+        Button addBtn = new Button("ADD NEW TASK");
+        styleButton(addBtn, ACCENT_COLOR, "#16a085", "white");
+        addBtn.setMaxWidth(Double.MAX_VALUE);
+        
+        addBtn.setOnAction(e -> {
+            String t = titleInput.getText();
+            String desc = descInput.getText();
+            LocalDate d = dateInput.getValue();
+            if (t.isEmpty() || desc.isEmpty() || d == null) { showError("Missing fields"); return; }
+            Task task = new Task(null, t, desc, d.toString(), false, "DEADLINE");
+            taskService.addTask(task);
+            taskList.add(task);
+            taskList.sort((a, b) -> a.getDeadline().compareTo(b.getDeadline()));
+            titleInput.clear(); descInput.clear(); dateInput.setValue(null);
             refreshTasks();
         });
 
-        pending.setOnMouseClicked(e -> {
-            currentFilter = "PENDING";
-            highlightSidebar(pending, allTasks, completed);
-            refreshTasks();
-        });
+        VBox addForm = new VBox(10, new Label("QUICK ADD"), titleInput, descInput, dateInput, addBtn);
+        addForm.setStyle("-fx-padding: 20; -fx-background-color: #1a1a2e; -fx-background-radius: 10;");
+        navBox.getChildren().add(5, addForm);
 
-        // Hover effects
-        addHoverEffect(allTasks);
-        addHoverEffect(completed);
-        addHoverEffect(pending);
+        // --- KANBAN BOARD ---
+        deadlineColumn = new VBox(15);
+        inProgressColumn = new VBox(15);
+        doneColumn = new VBox(15);
+        
+        ScrollPane dScroll = createScroll(deadlineColumn);
+        ScrollPane pScroll = createScroll(inProgressColumn);
+        ScrollPane doneScroll = createScroll(doneColumn);
 
-        // Sidebar container
-        VBox sidebar = new VBox(20, allTasks, completed, pending);
+        Label dHead = createColHeader("DEADLINE");
+        Label pHead = createColHeader("IN PROGRESS");
+        Label cHead = createColHeader("DONE");
 
-        sidebar.setStyle(
-            "-fx-background-color: linear-gradient(to bottom, #2c3e50, #34495e);" +
-            "-fx-padding: 20;"
-        );
+        VBox dCol = new VBox(10, dHead, dScroll);
+        VBox pCol = new VBox(10, pHead, pScroll);
+        VBox cCol = new VBox(10, cHead, doneScroll);
+        HBox.setHgrow(dCol, Priority.ALWAYS); HBox.setHgrow(pCol, Priority.ALWAYS); HBox.setHgrow(cCol, Priority.ALWAYS);
 
-        sidebar.setPrefWidth(180);
+        HBox kanban = new HBox(25, dCol, pCol, cCol);
+        kanban.setStyle("-fx-padding: 0 30 30 30;");
+
+        // --- ANALYTICS PLACEHOLDER ---
+        Label completionLabel = new Label("Completion: 65%");
+        Label workloadLabel = new Label("Workload: Balanced");
+        completionLabel.setStyle("-fx-text-fill: white;"); workloadLabel.setStyle("-fx-text-fill: white;");
+        HBox analytics = new HBox(40, completionLabel, workloadLabel);
+        analytics.setStyle("-fx-background-color: " + SIDEBAR_COLOR + "; -fx-padding: 15 30;");
+
+        VBox centerContent = new VBox(header, kanban, analytics);
+        VBox.setVgrow(kanban, Priority.ALWAYS);
+        centerContent.setStyle("-fx-background-color: " + BG_COLOR + ";");
 
         BorderPane root = new BorderPane();
+        root.setTop(topBar);
+        root.setLeft(navBox);
+        root.setCenter(centerContent);
 
-        root.setStyle("-fx-background-color: #f5f6fa;"); // updated
-        deadlineColumn = new VBox(10);
-        inProgressColumn = new VBox(10);
-        doneColumn = new VBox(10);
-
-        deadlineColumn.setStyle("-fx-padding: 10;");
-        inProgressColumn.setStyle("-fx-padding: 10;");
-        doneColumn.setStyle("-fx-padding: 10;");
-
-        deadlineColumn.setPrefWidth(250);
-        inProgressColumn.setPrefWidth(250);
-        doneColumn.setPrefWidth(250);
-
-        Label dLabel = new Label("Deadline");
-        dLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
-        Label pLabel = new Label("In Progress");
-        pLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
-        Label doneLabel = new Label("Done");
-        doneLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
-        VBox deadlineBox = new VBox(10, dLabel, deadlineColumn);
-        VBox progressBox = new VBox(10, pLabel, inProgressColumn);
-        VBox doneBox = new VBox(10, doneLabel, doneColumn);
-
-        HBox kanbanBoard = new HBox(20, deadlineBox, progressBox, doneBox);
-        kanbanBoard.setStyle("-fx-padding: 20;");
-        kanbanBoard.setAlignment(Pos.CENTER);
-
-        root.setTop(topBox);
-        root.setLeft(sidebar);
-        root.setCenter(kanbanBoard);
-
-        refreshTasks();
-
-        Scene scene = new Scene(root, 1000, 600);
+        Scene scene = new Scene(root, 1200, 800);
         stage.setScene(scene);
-        stage.setTitle("Dashboard");
+        stage.setTitle("Secure Task Manager");
+        stage.setFullScreen(true);
         stage.show();
+        
+        refreshTasks();
+    }
+
+    private ScrollPane createScroll(VBox content) {
+        ScrollPane sp = new ScrollPane(content);
+        sp.setFitToWidth(true);
+        sp.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-border-color: transparent;");
+        return sp;
+    }
+
+    private Label createColHeader(String text) {
+        Label l = new Label(text);
+        l.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: " + MUTED_TEXT + "; -fx-padding: 5 0;");
+        return l;
     }
 
     private void updateStats() {
         int total = taskList.size();
         int completed = 0;
+        int dueSoon = 0;
+
+        LocalDate today = LocalDate.now();
+        LocalDate soon = today.plusDays(2);
 
         for (Task t : taskList) {
-            if (t.isCompleted()) completed++;
+            if (t.isCompleted()) {
+                completed++;
+            } else {
+                try {
+                    LocalDate d = LocalDate.parse(t.getDeadline());
+                    if (!d.isBefore(today) && !d.isAfter(soon)) {
+                        dueSoon++;
+                    }
+                } catch (Exception e) {}
+            }
         }
 
         totalLabel.setText("Total: " + total);
-        completedLabel.setText("Completed: " + completed);
-        pendingLabel.setText("Pending: " + (total - completed));
+        completedLabel.setText("Done: " + completed);
+        dueSoonLabel.setText("Due Soon: " + dueSoon);
     }
 
     private void refreshTasks() {
@@ -302,9 +283,9 @@ public class DashboardUI extends Application {
             Label deadline = new Label("Due: " + t.getDeadline());
 
             // updated - text styling
-            title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-            desc.setStyle("-fx-text-fill: #555;");
-            deadline.setStyle("-fx-text-fill: #888;");
+            title.setStyle("-fx-font-size: 17px; -fx-font-weight: bold; -fx-text-fill: white;");
+            desc.setStyle("-fx-text-fill: " + MUTED_TEXT + "; -fx-font-size: 13px;");
+            deadline.setStyle("-fx-text-fill: " + ACCENT_COLOR + "; -fx-font-size: 12px; -fx-font-weight: bold;");
 
             Button editBtn = new Button("Edit");
             Button deleteBtn = new Button("Delete");
@@ -320,23 +301,20 @@ public class DashboardUI extends Application {
 
             // START
             startBtn.setOnAction(e -> {
-                t.setStatus("IN_PROGRESS");
-                mongoService.updateStatus(t.getId(), "IN_PROGRESS"); // updated
+                // t.setStatus("IN_PROGRESS");
+                taskService.markInProgress(t); // updated
                 refreshTasks();
             });
 
             // DONE
             doneBtn.setOnAction(e -> {
-                t.setStatus("DONE");
-                t.setCompleted(true);
-                mongoService.updateStatus(t.getId(), "DONE"); // updated
-                mongoService.updateCompletion(t.getId(), true); // updated
+                taskService.markDone(t); // updated
                 refreshTasks();
             });
 
             // DELETE
             deleteBtn.setOnAction(e -> {
-                mongoService.deleteTask(t.getId()); // updated
+                taskService.deleteTask(t.getId()); // updated
                 taskList.remove(t);
                 refreshTasks();
             });
@@ -372,17 +350,17 @@ public class DashboardUI extends Application {
                     // (Temporary until API layer)
                     // mongoService.deleteTask(t.getId());
                     // mongoService.addTask(t);
-                    mongoService.updateTask(t);
+                    taskService.updateTask(t);
 
                     refreshTasks();
                     editStage.close();
                 });
 
                 VBox layout = new VBox(10,
-                        new Label("Title"), titleField,
-                        new Label("Description"), descField,
-                        new Label("Deadline"), datePicker,
-                        saveBtn
+                    new Label("Title"), titleField,
+                    new Label("Description"), descField,
+                    new Label("Deadline"), datePicker,
+                    saveBtn
                 );
 
                 layout.setAlignment(Pos.CENTER);
@@ -416,16 +394,16 @@ public class DashboardUI extends Application {
             if (status.equals("DONE")) borderColor = "#2ecc71";
 
             // NOW create card
-            VBox card = new VBox(5, title, desc, deadline, btnRow);
+            VBox card = new VBox(8, title, desc, deadline, btnRow);
 
             card.setStyle(
-                "-fx-background-color: #ffffff;" +
-                "-fx-padding: 15;" +
-                "-fx-border-radius: 15;" +
-                "-fx-background-radius: 15;" +
-                "-fx-border-width: 0 0 0 5;" +
+                "-fx-background-color: " + CARD_BG + ";" +
+                "-fx-padding: 20;" +
+                "-fx-border-radius: 12;" +
+                "-fx-background-radius: 12;" +
+                "-fx-border-width: 0 0 0 4;" +
                 "-fx-border-color: transparent transparent transparent " + borderColor + ";" +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08),8,0,0,2);"
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0, 0, 4);"
             );
 
             switch (status) {

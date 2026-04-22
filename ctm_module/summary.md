@@ -74,3 +74,135 @@ The `DashboardUI` class is the main JavaFX application providing the graphical u
 - **Kanban Logic**: Added logic to hide/show "Start" and "Done" buttons based on the task's current column.
 - **Search & Filter**: Integrated real-time search functionality with status-based sidebar filtering.
 - **Data Persistence**: Fully integrated with `MongoService` for all CRUD operations, including a fix for missing status fields.
+
+# T2 Module Summary — Interface Layer (JavaFX)
+
+## Overview
+
+This module represents the **client-side interface (T2)** of the Zero-Knowledge Collaborative Task Manager. It is responsible for:
+
+- Rendering the user interface using JavaFX
+- Handling all user interactions
+- Managing task visualization via a Kanban board
+- Communicating with the backend (currently MongoDB directly)
+- Acting as the integration layer for future cryptographic and connectivity modules
+
+At present, the implementation reflects an **early-stage functional UI system**, not yet aligned with the zero-knowledge architecture.
+
+---
+
+## Current Architecture (Implemented)
+
+### UI Layer (JavaFX)
+- Main entry point: `DashboardUI`
+- Displays:
+  - Task creation form
+  - Search functionality
+  - Task statistics (total, completed, pending)
+  - Sidebar filters (All / Completed / Pending)
+  - Kanban board (Deadline / In Progress / Done)
+
+### Data Layer (Current)
+- Direct interaction with MongoDB via `MongoService`
+- Tasks are stored and retrieved in **plaintext**
+- No encryption or abstraction layer exists yet
+
+### Model Layer
+- `Task` class extends `ProjectItem`
+- Contains:
+  - title
+  - description
+  - deadline
+  - status
+  - completion flag
+  - notes (not yet used in UI)
+
+---
+
+## Functional Capabilities (Implemented)
+
+- Create task
+- Edit task
+- Delete task
+- Update task status (Deadline → In Progress → Done)
+- Search tasks (title + description)
+- Filter tasks (Completed / Pending / All)
+- Display tasks in Kanban board format
+- Real-time UI refresh on actions
+
+---
+
+## Architectural Gap (Critical)
+
+The current implementation **violates the core project principle**:
+
+> "Server must be cryptographically blind to all task content"
+
+### Issues:
+- Task data is stored in plaintext in MongoDB
+- No encryption before persistence
+- No decryption layer
+- No separation between UI and storage logic
+- No offline support
+- No conflict handling
+
+---
+
+## Target Architecture (To Be Implemented)
+
+The UI module must evolve into:
+
+### 1. Encryption-Orchestrating Client
+- All task data encrypted before leaving the UI
+- All blobs decrypted only inside UI memory
+
+### 2. Layered Communication
+Replace:
+
+UI → MongoService → MongoDB
+
+
+With:
+
+UI → CryptoFacade → Connectivity API → MongoDB (opaque blobs)
+
+
+### 3. Offline-First Client
+- Introduce SQLite for:
+  - caching encrypted blobs
+  - nonce counters
+  - pending operations queue
+
+---
+
+## Role of T2 in Final System
+
+T2 will become:
+
+- The **only place where plaintext exists**
+- The **controller of encryption flow**
+- The **handler of conflict resolution**
+- The **manager of local state and synchronization**
+
+---
+
+## Current Status
+
+| Area                     | Status        |
+|--------------------------|--------------|
+| JavaFX UI               | Implemented  |
+| Kanban Board            | Implemented  |
+| MongoDB Integration     | Implemented  |
+| Encryption              | Not Started  |
+| SQLite Cache            | Not Started  |
+| WebSocket Sync          | Not Started  |
+| Conflict Handling       | Not Started  |
+| Invite Flow             | Not Started  |
+
+---
+
+## Conclusion
+
+The current system is a **functional task manager UI**, but not yet a **secure zero-knowledge client**.
+
+The next phase involves transforming this UI into a **secure orchestration layer** that integrates
