@@ -82,11 +82,14 @@ public class TaskCard extends VBox {
         getChildren().addAll(pTag, title, desc, metaRow, actions);
 
         // Status coloring
-        String statusColor = "#30363d";
+        String statusColor = "#e5e7eb";
         if (status.equals("DEADLINE")) statusColor = "#8b5cf6";
         else if (status.equals("IN_PROGRESS")) statusColor = "#f59e0b";
         else if (status.equals("DONE")) statusColor = "#10b981";
-        setStyle("-fx-border-color: transparent transparent transparent " + statusColor + "; -fx-border-width: 0 0 0 4;");
+        
+        setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-padding: 20; " +
+                 "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4); " +
+                 "-fx-border-color: transparent transparent transparent " + statusColor + "; -fx-border-width: 0 0 0 4;");
 
         // Drag support
         setOnDragDetected(event -> {
@@ -99,7 +102,7 @@ public class TaskCard extends VBox {
     }
 
     private void styleBtn(Button btn, String color, String hoverColor) {
-        String base = "-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 12; -fx-cursor: hand;";
+        String base = "-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 8 15; -fx-cursor: hand;";
         btn.setStyle(base);
         btn.setOnMouseEntered(e -> btn.setStyle(base + "-fx-background-color: " + hoverColor + ";"));
         btn.setOnMouseExited(e -> btn.setStyle(base));

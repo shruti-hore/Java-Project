@@ -4,6 +4,7 @@
 # Project Builder folders (Agents, Skills, etc)
 **/Builder/
 **/builder/
+**/MD files/
 
 # Maven/Java
 target/
@@ -14,4 +15,4 @@ target/
 *.ear
 *.zip
 *.tar.gz
-*.rar
+*.rar

@@ -25,26 +25,27 @@ public class MyTasksView extends VBox {
         this.onEdit = editAction;
         this.onDelete = deleteAction;
 
-        setSpacing(20);
+        setSpacing(30);
         setPadding(new Insets(30));
-        setStyle("-fx-background-color: #0d1117;");
+        setStyle("-fx-background-color: #f5f6fa;");
 
         // --- TOP BAR ---
         HBox topBar = new HBox(20);
         topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setPadding(new Insets(10, 0, 10, 0));
 
-        Label title = new Label("MY TASKS");
-        title.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
+        Label title = new Label("TRACKING");
+        title.setStyle("-fx-text-fill: #1f2937; -fx-font-size: 24px; -fx-font-weight: bold;");
 
         TextField searchField = new TextField();
         searchField.setPromptText("Search tasks...");
         searchField.setPrefWidth(300);
-        searchField.setStyle("-fx-background-color: #161b22; -fx-text-fill: white; -fx-background-radius: 10; -fx-padding: 10 15; -fx-border-color: #30363d; -fx-border-radius: 10;");
+        searchField.setStyle("-fx-background-color: white; -fx-text-fill: #1f2937; -fx-background-radius: 12; -fx-padding: 12 15; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
         searchField.textProperty().addListener((obs, o, n) -> { searchText = n.toLowerCase(); refresh(); });
 
         Button addTaskBtn = new Button("+ Add Task");
         addTaskBtn.getStyleClass().add("button-primary");
-        addTaskBtn.setStyle("-fx-background-color: #238636; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 10; -fx-cursor: hand;");
+        addTaskBtn.setPrefHeight(45);
         addTaskBtn.setOnAction(e -> onEdit.accept(null)); // null means new task
 
         Region spacer = new Region();
@@ -82,8 +83,8 @@ public class MyTasksView extends VBox {
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
-        content.setStyle("-fx-padding: 5;");
-        content.setMinWidth(250);
+        content.setStyle("-fx-padding: 15; -fx-background-color: #f0f3f6; -fx-background-radius: 20;");
+        content.setMinWidth(300);
 
         // Drag over column
         scroll.setOnDragOver(event -> {

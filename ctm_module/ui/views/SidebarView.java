@@ -1,6 +1,8 @@
 package ui.views;
 
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -13,26 +15,52 @@ public class SidebarView extends VBox {
 
     public SidebarView(Consumer<String> navigateAction) {
         this.onNavigate = navigateAction;
-        setPrefWidth(220);
+        setPrefWidth(240);
         getStyleClass().add("sidebar");
-        setStyle("-fx-background-color: #161b22; -fx-padding: 30 15;");
+        setPadding(new Insets(0));
 
-        Label logo = new Label("TASKER PRO");
-        logo.setStyle("-fx-text-fill: #8b5cf6; -fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 0 0 40 0;");
-        logo.setMaxWidth(Double.MAX_VALUE);
-        logo.setAlignment(Pos.CENTER);
+        // Profile Section
+        VBox profile = new VBox(10);
+        profile.setAlignment(Pos.CENTER);
+        profile.setPadding(new Insets(40, 20, 40, 20));
+        
+        Region avatar = new Region();
+        avatar.setPrefSize(60, 60);
+        avatar.setStyle("-fx-background-color: #e2e8f0; -fx-background-radius: 30;");
+        
+        String userEmail = utils.UserSession.getCurrentUserEmail();
+        String displayUser = (userEmail != null && userEmail.contains("@")) ? userEmail.split("@")[0] : "User";
+        
+        Label name = new Label(displayUser.toUpperCase());
+        name.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #1f2937;");
+        Label role = new Label(userEmail != null ? userEmail : "");
+        role.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 10px;");
+        
+        profile.getChildren().addAll(avatar, name, role);
 
         Label dashboardNav = createNavItem("Dashboard", "DASHBOARD");
-        Label myTasksNav = createNavItem("My Tasks", "KANBAN");
+        Label trackingNav = createNavItem("Tracking", "KANBAN");
         Label projectsNav = createNavItem("Projects", "PROJECTS");
-        Label calendarNav = createNavItem("Calendar", "CALENDAR");
+        Label historyNav = createNavItem("Work History", "HISTORY");
+        
+        Label toolsHeader = new Label("TOOLS");
+        toolsHeader.setStyle("-fx-text-fill: #9ca3af; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 30 20 10 20;");
+        
+        Label inboxNav = createNavItem("Inbox", "INBOX");
         Label settingsNav = createNavItem("Settings", "SETTINGS");
         Label logoutNav = createNavItem("Logout", "LOGOUT");
 
-        getChildren().addAll(logo, dashboardNav, myTasksNav, projectsNav, calendarNav, new Region(), settingsNav, logoutNav);
-        VBox.setVgrow(getChildren().get(5), Priority.ALWAYS);
+        VBox navBox = new VBox(5, dashboardNav, trackingNav, projectsNav, historyNav, toolsHeader, inboxNav, settingsNav, logoutNav);
+        navBox.setPadding(new Insets(0, 15, 0, 15));
 
-        // Default selection
+        Button addTaskBtn = new Button("+ Add New Task");
+        addTaskBtn.getStyleClass().add("button-primary");
+        addTaskBtn.setMaxWidth(Double.MAX_VALUE);
+        VBox.setMargin(addTaskBtn, new Insets(40, 20, 20, 20));
+
+        getChildren().addAll(profile, navBox, new Region(), addTaskBtn);
+        VBox.setVgrow(getChildren().get(2), Priority.ALWAYS);
+
         selectNav(dashboardNav);
     }
 
@@ -40,10 +68,6 @@ public class SidebarView extends VBox {
         Label nav = new Label(text);
         nav.getStyleClass().add("sidebar-nav-item");
         nav.setMaxWidth(Double.MAX_VALUE);
-        nav.setStyle("-fx-padding: 12 15; -fx-text-fill: #8b949e; -fx-cursor: hand; -fx-font-size: 14px; -fx-background-radius: 8;");
-        
-        nav.setOnMouseEntered(e -> { if (nav != activeNav) nav.setStyle(nav.getStyle() + "-fx-background-color: #21262d; -fx-text-fill: white;"); });
-        nav.setOnMouseExited(e -> { if (nav != activeNav) nav.setStyle(nav.getStyle().split("-fx-background-color")[0]); });
         
         nav.setOnMouseClicked(e -> {
             selectNav(nav);
@@ -55,9 +79,9 @@ public class SidebarView extends VBox {
 
     private void selectNav(Label nav) {
         if (activeNav != null) {
-            activeNav.setStyle("-fx-padding: 12 15; -fx-text-fill: #8b949e; -fx-cursor: hand; -fx-font-size: 14px; -fx-background-radius: 8;");
+            activeNav.getStyleClass().remove("sidebar-nav-active");
         }
         activeNav = nav;
-        activeNav.setStyle("-fx-padding: 12 15; -fx-text-fill: white; -fx-font-size: 14px; -fx-background-radius: 8; -fx-background-color: #8b5cf6; -fx-font-weight: bold;");
+        activeNav.getStyleClass().add("sidebar-nav-active");
     }
 }

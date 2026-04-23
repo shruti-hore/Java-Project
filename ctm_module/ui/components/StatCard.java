@@ -1,15 +1,20 @@
 package ui.components;
 
 import javafx.scene.control.Label;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.geometry.Insets;
 
 public class StatCard extends VBox {
     public StatCard(String label, String value, String color) {
-        setSpacing(10);
-        setPadding(new Insets(15));
+        setSpacing(8);
+        setPadding(new Insets(20));
         getStyleClass().add("stat-card");
-        setStyle(getStyle() + "-fx-border-color: " + color + "; -fx-border-width: 0 0 0 4;");
+        
+        // Soft icon placeholder
+        Region icon = new Region();
+        icon.setPrefSize(40, 40);
+        icon.setStyle("-fx-background-color: " + color + "; -fx-opacity: 0.1; -fx-background-radius: 10;");
 
         Label valLbl = new Label(value);
         valLbl.getStyleClass().add("stat-value");
@@ -17,7 +22,7 @@ public class StatCard extends VBox {
         Label tagLbl = new Label(label.toUpperCase());
         tagLbl.getStyleClass().add("stat-label");
 
-        getChildren().addAll(tagLbl, valLbl);
-        setPrefWidth(200);
+        getChildren().addAll(icon, valLbl, tagLbl);
+        setPrefWidth(220);
     }
 }

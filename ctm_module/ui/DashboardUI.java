@@ -41,7 +41,7 @@ public class DashboardUI extends Application {
         mainStack = new StackPane();
         Scene scene = new Scene(mainStack, 1200, 800);
         try {
-            File cssFile = new File("resources/style.css");
+            File cssFile = new File("resources/light_style.css");
             if (cssFile.exists()) {
                 scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
             }
@@ -56,28 +56,34 @@ public class DashboardUI extends Application {
     }
 
     private void showLoginScreen() {
+        mainStack.setStyle("-fx-background-color: #f5f6fa;");
+        
         VBox loginBox = new VBox(25);
         loginBox.setAlignment(Pos.CENTER);
-        loginBox.setMaxSize(400, 450);
-        loginBox.setStyle("-fx-background-color: #161b22; -fx-padding: 40; -fx-background-radius: 20; -fx-border-color: #30363d; -fx-border-width: 1;");
+        loginBox.setMaxSize(400, 480);
+        loginBox.setStyle("-fx-background-color: white; -fx-padding: 50; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
 
         Label title = new Label("SECURE TASKER");
-        title.setStyle("-fx-text-fill: #8b5cf6; -fx-font-size: 28px; -fx-font-weight: bold;");
+        title.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 32px; -fx-font-weight: bold;");
 
-        VBox fields = new VBox(15);
+        VBox fields = new VBox(10);
+        Label eLbl = new Label("EMAIL ADDRESS");
+        eLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         TextField emailField = new TextField();
-        emailField.setPromptText("Email Address");
-        emailField.setStyle("-fx-background-color: #0d1117; -fx-text-fill: white; -fx-padding: 12; -fx-background-radius: 8; -fx-border-color: #30363d;");
+        emailField.setPromptText("Enter your email");
+        emailField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
+        Label pLbl = new Label("PASSWORD");
+        pLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         PasswordField passField = new PasswordField();
-        passField.setPromptText("Password");
-        passField.setStyle("-fx-background-color: #0d1117; -fx-text-fill: white; -fx-padding: 12; -fx-background-radius: 8; -fx-border-color: #30363d;");
-        fields.getChildren().addAll(new Label("EMAIL"), emailField, new Label("PASSWORD"), passField);
+        passField.setPromptText("Enter your password");
+        passField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+        fields.getChildren().addAll(eLbl, emailField, new Region(), pLbl, passField);
 
-        Button loginBtn = new Button("LOG IN");
+        Button loginBtn = new Button("SIGN IN");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
-        loginBtn.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 12; -fx-cursor: hand;");
-        loginBtn.setPrefHeight(45);
+        loginBtn.getStyleClass().add("button-primary");
+        loginBtn.setPrefHeight(50);
 
         loginBtn.setOnAction(e -> {
             String email = emailField.getText();
@@ -91,7 +97,7 @@ public class DashboardUI extends Application {
             initializeDashboard();
         });
 
-        loginBox.getChildren().addAll(title, new Label("Please sign in to continue"), fields, loginBtn);
+        loginBox.getChildren().addAll(title, new Label("Manage your tasks efficiently"), fields, loginBtn);
         mainStack.getChildren().add(loginBox);
     }
 
@@ -159,8 +165,8 @@ public class DashboardUI extends Application {
         });
 
         VBox layout = new VBox(15, new Label("NEW TASK"), tIn, dIn, dateIn, pIn, save);
-        layout.setStyle("-fx-padding: 30; -fx-background-color: #161b22; -fx-background-radius: 12; -fx-border-color: #30363d; -fx-border-width: 1;");
-        layout.setMaxSize(350, 400);
+        layout.setStyle("-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
+        layout.setMaxSize(400, 450);
         showOverlay(layout);
     }
 
@@ -192,8 +198,8 @@ public class DashboardUI extends Application {
         });
 
         VBox layout = new VBox(15, new Label("EDIT TASK"), tIn, dIn, dateIn, pIn, save);
-        layout.setStyle("-fx-padding: 30; -fx-background-color: #161b22; -fx-background-radius: 12; -fx-border-color: #30363d; -fx-border-width: 1;");
-        layout.setMaxSize(350, 400);
+        layout.setStyle("-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
+        layout.setMaxSize(400, 450);
         showOverlay(layout);
     }
 
