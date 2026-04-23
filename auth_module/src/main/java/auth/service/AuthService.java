@@ -1,4 +1,5 @@
 import auth.model.User;
+import java.security.SecureRandom;
 
 public class AuthService
 {
@@ -38,7 +39,9 @@ public class AuthService
 
   private byte[] generateSalt()
   {
-    return new byte[16]; // placeholder
+    byte[] salt = new byte[16];
+    new SecureRandom().nextBytes(salt);
+    return salt;
   }
 
   private void zeroArray(byte[] arr)
