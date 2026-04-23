@@ -12,21 +12,28 @@ public class CryptoAdapter
   public byte[] deriveMasterKey(char[] password, byte[] salt)
   {
     // call crypto module
-    return new byte[32]; // placeholder
+    return cryptoService.deriveMasterKey(password, salt);; // placeholder
   }
 
   public byte[] deriveVaultKey(byte[] masterKey)
   {
-    return new byte[32]; // placeholder
+    return cryptoService.deriveSubKey(masterKey, "vault-key"); // placeholder
   }
+
+  public byte[] deriveAuthKey(byte[] masterKey)
+  {
+    return cryptoService.deriveSubKey(masterKey, "auth-signing-key");
+  }
+
+  // Future integration points (to be implemented when exposed in CryptoService)
 
   public byte[][] generateKeyPair()
   {
-    return new byte[2][]; // [public, private]
+    throw new UnsupportedOperationException("KeyPair generation not exposed yet"); // [public, private]
   }
 
   public byte[] encryptVault(byte[] privateKey, byte[] vaultKey)
   {
-    return new byte[0]; // placeholder
+    throw new UnsupportedOperationException("Vault encryption not exposed yet"); // placeholder
   }
 }
