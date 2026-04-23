@@ -11,25 +11,19 @@ public class AuthService
 
   public User register(String email, char[] password)
   {
-    // Step 1: Generate salt
     byte[] salt = generateSalt();
 
-    // Step 2: Derive master key (via crypto module)
+    // REAL CALL
     byte[] masterKey = cryptoAdapter.deriveMasterKey(password, salt);
 
-    // Step 3: Derive vault key
+    // REAL CALL
     byte[] vaultKey = cryptoAdapter.deriveVaultKey(masterKey);
 
-    // Step 4: Generate key pair
-    byte[][] keyPair = cryptoAdapter.generateKeyPair();
+    // Placeholder until crypto exposes more APIs
+    byte[] publicKey = new byte[32];
+    byte[] encryptedVault = new byte[0];
 
-    byte[] publicKey = keyPair[0];
-    byte[] privateKey = keyPair[1];
-
-    // Step 5: Encrypt private key (vault)
-    byte[] encryptedVault = cryptoAdapter.encryptVault(privateKey, vaultKey);
-
-    // Step 6: Create user object
+    // Create user object
     User user = new User();
     user.setEmail(email);
     user.setPublicKey(publicKey);
@@ -38,7 +32,6 @@ public class AuthService
 
     // Cleanup sensitive data
     zeroArray(masterKey);
-    zeroArray(privateKey);
 
     return user;
   }
