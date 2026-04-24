@@ -32,7 +32,7 @@ public class DashboardView extends BorderPane {
         centerContent.getChildren().addAll(
             createWelcomeCard(),
             createStatsRow(),
-            createChartsRow(),
+            createWorkloadAnalysisSection(),
             createWorkProgressSection()
         );
 
@@ -101,53 +101,38 @@ public class DashboardView extends BorderPane {
         return row;
     }
 
-    private HBox createChartsRow() {
-        HBox row = new HBox(25);
-        row.setPrefHeight(350);
+    private VBox createWorkloadAnalysisSection() {
+        VBox section = new VBox(20);
+        section.setStyle("-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+        
+        Label title = new Label("WORKLOAD ANALYSIS");
+        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-font-size: 14px;");
+        
+        long high = taskList.stream().filter(t -> "High".equalsIgnoreCase(t.getPriority())).count();
+        long medium = taskList.stream().filter(t -> "Medium".equalsIgnoreCase(t.getPriority())).count();
+        long low = taskList.stream().filter(t -> "Low".equalsIgnoreCase(t.getPriority())).count();
+        
+        HBox stats = new HBox(60);
+        stats.setAlignment(Pos.CENTER_LEFT);
+        stats.getChildren().addAll(
+            createWorkloadItem("HIGH PRIORITY", high, "#ef4444"),
+            createWorkloadItem("MEDIUM PRIORITY", medium, "#f59e0b"),
+            createWorkloadItem("LOW PRIORITY", low, "#10b981"),
+            createWorkloadItem("TOTAL ACTIVE", taskList.stream().filter(t -> !"DONE".equals(t.getStatus())).count(), "#4f46e5")
+        );
+        
+        section.getChildren().addAll(title, stats);
+        return section;
+    }
 
-        // Line Chart Container
-        VBox lineChartBox = new VBox(15);
-        lineChartBox.getStyleClass().add("chart-container");
-        HBox.setHgrow(lineChartBox, Priority.ALWAYS);
-        
-        Label chartTitle = new Label("Work Progress");
-        chartTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937;");
-        
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        LineChart<String, Number> lineChart = new LineChart<>(xAxis, yAxis);
-        lineChart.setLegendVisible(false);
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        
-        // Mock data for trends (since we don't have historical data in Mongo yet)
-        series.getData().add(new XYChart.Data<>("Mon", 2));
-        series.getData().add(new XYChart.Data<>("Tue", 5));
-        series.getData().add(new XYChart.Data<>("Wed", 3));
-        series.getData().add(new XYChart.Data<>("Thu", 8));
-        series.getData().add(new XYChart.Data<>("Fri", 10));
-        lineChart.getData().add(series);
-        
-        lineChartBox.getChildren().addAll(chartTitle, lineChart);
-
-        // Donut Chart Container
-        VBox pieChartBox = new VBox(15);
-        pieChartBox.getStyleClass().add("chart-container");
-        pieChartBox.setPrefWidth(300);
-        
-        Label pieTitle = new Label("Task Distribution");
-        pieTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937;");
-        
-        PieChart pieChart = new PieChart();
-        pieChart.getData().add(new PieChart.Data("To Do", getCount("DEADLINE")));
-        pieChart.getData().add(new PieChart.Data("In Progress", getCount("IN_PROGRESS")));
-        pieChart.getData().add(new PieChart.Data("Done", getCount("DONE")));
-        pieChart.setLabelsVisible(false);
-        pieChart.setLegendSide(Side.BOTTOM);
-        
-        pieChartBox.getChildren().addAll(pieTitle, pieChart);
-
-        row.getChildren().addAll(lineChartBox, pieChartBox);
-        return row;
+    private VBox createWorkloadItem(String label, long count, String color) {
+        VBox item = new VBox(5);
+        Label countLbl = new Label(String.valueOf(count));
+        countLbl.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+        Label labelLbl = new Label(label);
+        labelLbl.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-font-weight: bold;");
+        item.getChildren().addAll(countLbl, labelLbl);
+        return item;
     }
 
     private VBox createWorkProgressSection() {
