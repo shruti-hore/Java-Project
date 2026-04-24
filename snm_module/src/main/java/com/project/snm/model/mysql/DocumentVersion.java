@@ -26,6 +26,10 @@ public class DocumentVersion {
 
     private String blobId;
 
+    private String nonceBase64;
+
+    private String aadBase64;
+
     private Long createdBy;
 
     private Instant createdAt;
