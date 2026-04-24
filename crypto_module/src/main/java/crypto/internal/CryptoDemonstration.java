@@ -1,5 +1,6 @@
 package crypto.internal;
 
+import crypto.api.X25519KeyPair;
 import java.security.PublicKey;
 import java.util.HexFormat;
 

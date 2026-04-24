@@ -1,5 +1,6 @@
 package crypto.internal;
 
+import crypto.api.X25519KeyPair;
 import org.junit.jupiter.api.Test;
 import javax.crypto.AEADBadTagException;
 import java.security.PublicKey;
