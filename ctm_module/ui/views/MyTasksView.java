@@ -16,6 +16,7 @@ public class MyTasksView extends VBox {
     private ObservableList<Task> taskList;
     private String searchText = "";
     private VBox deadlineColumn, inProgressColumn, doneColumn;
+    private HBox workloadSummary;
     private Consumer<Task> onEdit;
     private Consumer<Task> onDelete;
 
@@ -53,6 +54,12 @@ public class MyTasksView extends VBox {
 
         topBar.getChildren().addAll(title, searchField, spacer, addTaskBtn);
 
+        // --- WORKLOAD SUMMARY ---
+        workloadSummary = new HBox(30);
+        workloadSummary.setAlignment(Pos.CENTER_LEFT);
+        workloadSummary.setPadding(new Insets(15, 25, 15, 25));
+        workloadSummary.setStyle("-fx-background-color: white; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 5);");
+
         // --- KANBAN ---
         HBox kanban = new HBox(25);
         VBox.setVgrow(kanban, Priority.ALWAYS);
@@ -67,7 +74,7 @@ public class MyTasksView extends VBox {
             createColumn("DONE", "#10b981", doneColumn, "DONE")
         );
 
-        getChildren().addAll(topBar, kanban);
+        getChildren().addAll(topBar, workloadSummary, kanban);
         refresh();
     }
 
@@ -126,5 +133,38 @@ public class MyTasksView extends VBox {
             else if ("IN_PROGRESS".equals(t.getStatus())) inProgressColumn.getChildren().add(card);
             else if ("DONE".equals(t.getStatus())) doneColumn.getChildren().add(card);
         }
+        
+        updateWorkloadSummary();
+    }
+
+    private void updateWorkloadSummary() {
+        workloadSummary.getChildren().clear();
+        
+        long high = taskList.stream().filter(t -> "High".equalsIgnoreCase(t.getPriority())).count();
+        long active = taskList.stream().filter(t -> !"DONE".equals(t.getStatus())).count();
+        long overdue = taskList.stream().filter(t -> !"DONE".equals(t.getStatus()) && java.time.LocalDate.parse(t.getDeadline()).isBefore(java.time.LocalDate.now())).count();
+
+        Label label = new Label("WORKLOAD ANALYSIS:");
+        label.setStyle("-fx-font-weight: bold; -fx-text-fill: #9ca3af; -fx-font-size: 11px;");
+        
+        HBox stats = new HBox(25);
+        stats.getChildren().addAll(
+            createStatItem("🔥 HIGH PRIORITY", String.valueOf(high), "#ef4444"),
+            createStatItem("📝 ACTIVE TASKS", String.valueOf(active), "#4f46e5"),
+            createStatItem("⚠️ OVERDUE", String.valueOf(overdue), "#f59e0b")
+        );
+        
+        workloadSummary.getChildren().addAll(label, stats);
+    }
+
+    private HBox createStatItem(String label, String value, String color) {
+        HBox item = new HBox(10);
+        item.setAlignment(Pos.CENTER_LEFT);
+        Label vLbl = new Label(value);
+        vLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: " + color + ";");
+        Label lLbl = new Label(label);
+        lLbl.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 11px; -fx-font-weight: bold;");
+        item.getChildren().addAll(vLbl, lLbl);
+        return item;
     }
 }

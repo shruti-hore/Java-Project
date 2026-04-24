@@ -99,6 +99,14 @@ public class TaskCard extends VBox {
             db.setContent(content);
             event.consume();
         });
+
+        // Single click to edit
+        setOnMouseClicked(e -> {
+            if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 1) {
+                onEdit.accept(t);
+                e.consume();
+            }
+        });
     }
 
     private void styleBtn(Button btn, String color, String hoverColor) {

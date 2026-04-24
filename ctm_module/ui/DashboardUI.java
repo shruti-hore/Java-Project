@@ -56,6 +56,7 @@ public class DashboardUI extends Application {
     }
 
     private void showLoginScreen() {
+        mainStack.getChildren().clear();
         mainStack.setStyle("-fx-background-color: #f5f6fa;");
         
         VBox loginBox = new VBox(25);
@@ -143,6 +144,13 @@ public class DashboardUI extends Application {
         TextField tIn = new TextField(); tIn.setPromptText("Title");
         TextField dIn = new TextField(); dIn.setPromptText("Description");
         DatePicker dateIn = new DatePicker(LocalDate.now());
+        dateIn.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.isBefore(LocalDate.now()));
+            }
+        });
         ComboBox<String> pIn = new ComboBox<>(FXCollections.observableArrayList("High", "Medium", "Low"));
         pIn.setValue("Low");
         pIn.setMaxWidth(Double.MAX_VALUE);
@@ -174,6 +182,13 @@ public class DashboardUI extends Application {
         TextField tIn = new TextField(t.getTitle());
         TextField dIn = new TextField(t.getDescription());
         DatePicker dateIn = new DatePicker(LocalDate.parse(t.getDeadline()));
+        dateIn.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                setDisable(empty || date.isBefore(LocalDate.now()));
+            }
+        });
         ComboBox<String> pIn = new ComboBox<>(FXCollections.observableArrayList("High", "Medium", "Low"));
         pIn.setValue(t.getPriority());
         pIn.setMaxWidth(Double.MAX_VALUE);
