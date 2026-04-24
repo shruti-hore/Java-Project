@@ -1,11 +1,12 @@
 package com.project.snm.service;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import com.project.snm.dto.CreateDocumentVersionRequest;
 import com.project.snm.model.mysql.DocumentVersion;
 import com.project.snm.repository.DocumentVersionRepository;
+import com.project.snm.websocket.SyncNotificationService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -18,9 +19,12 @@ import java.util.Set;
 public class DocumentVersionService {
 
     private final DocumentVersionRepository documentVersionRepository;
+    private final SyncNotificationService syncNotificationService;
 
-    public DocumentVersionService(DocumentVersionRepository documentVersionRepository) {
+    public DocumentVersionService(DocumentVersionRepository documentVersionRepository,
+                                  SyncNotificationService syncNotificationService) {
         this.documentVersionRepository = documentVersionRepository;
+        this.syncNotificationService = syncNotificationService;
     }
 
     public DocumentVersion createVersion(String docId, CreateDocumentVersionRequest request) {
@@ -56,7 +60,9 @@ public class DocumentVersionService {
         version.setCreatedAt(Instant.now());
         version.setVectorClockJson(request.getVectorClockJson());
 
-        return documentVersionRepository.save(version);
+        DocumentVersion savedVersion = documentVersionRepository.save(version);
+        syncNotificationService.broadcastDocumentUpdate(savedVersion);
+        return savedVersion;
     }
 
     public List<DocumentVersion> getVersions(String documentUuid) {
@@ -71,13 +77,7 @@ public class DocumentVersionService {
         }
 
         String cleaned = json.trim();
-
-        if (cleaned.startsWith("{")) {
-            cleaned = cleaned.substring(1);
-        }
-        if (cleaned.endsWith("}")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 1);
-        }
+        cleaned = cleaned.replace("{", "").replace("}", "").replace("\"", "");
 
         if (cleaned.isBlank()) {
             return clock;
@@ -87,49 +87,44 @@ public class DocumentVersionService {
 
         for (String entry : entries) {
             String[] pair = entry.split(":");
-
-            if (pair.length != 2) {
-                throw new RuntimeException("Invalid vector clock format");
+            if (pair.length == 2) {
+                String key = pair[0].trim();
+                Integer value = Integer.parseInt(pair[1].trim());
+                clock.put(key, value);
             }
-
-            String key = pair[0].trim().replace("\"", "");
-            Integer value = Integer.parseInt(pair[1].trim().replace("\"", ""));
-
-            clock.put(key, value);
         }
 
         return clock;
     }
 
-    private int compareClocks(Map<String, Integer> a, Map<String, Integer> b) {
-        boolean aGreater = false;
-        boolean bGreater = false;
+    private int compareClocks(Map<String, Integer> newClock, Map<String, Integer> oldClock) {
+        boolean greater = false;
+        boolean smaller = false;
 
-        Set<String> keys = new HashSet<>();
-        keys.addAll(a.keySet());
-        keys.addAll(b.keySet());
+        Set<String> allKeys = new HashSet<>();
+        allKeys.addAll(newClock.keySet());
+        allKeys.addAll(oldClock.keySet());
 
-        for (String key : keys) {
-            int av = a.getOrDefault(key, 0);
-            int bv = b.getOrDefault(key, 0);
+        for (String key : allKeys) {
+            int newValue = newClock.getOrDefault(key, 0);
+            int oldValue = oldClock.getOrDefault(key, 0);
 
-            if (av > bv) {
-                aGreater = true;
+            if (newValue > oldValue) {
+                greater = true;
+            } else if (newValue < oldValue) {
+                smaller = true;
             }
-            if (bv > av) {
-                bGreater = true;
-            }
         }
 
-        if (aGreater && !bGreater) {
-            return 1;
+        if (!greater && !smaller) {
+            return 0;   // duplicate
         }
-        if (!aGreater && bGreater) {
-            return -1;
+        if (greater && !smaller) {
+            return 1;   // valid newer version
         }
-        if (!aGreater && !bGreater) {
-            return 0;
+        if (!greater && smaller) {
+            return -1;  // outdated
         }
-        return 2;
+        return 2;       // concurrent conflict
     }
 }

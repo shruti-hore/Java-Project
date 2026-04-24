@@ -19,19 +19,19 @@ public class VaultServiceTest {
         byte[] originalData = "secret-private-key-material".getBytes();
         byte[] dataToSeal = Arrays.copyOf(originalData, originalData.length);
 
-        byte[] blob = vaultService.seal(dataToSeal, vaultKey);
+        byte[] blob = vaultService.seal(dataToSeal, Arrays.copyOf(vaultKey, 32));
         
         // original dataToSeal should be zeroed
         assertThat(dataToSeal).containsOnly((byte) 0);
 
-        byte[] unsealed = vaultService.unseal(blob, vaultKey);
+        byte[] unsealed = vaultService.unseal(blob, Arrays.copyOf(vaultKey, 32));
         assertThat(unsealed).isEqualTo(originalData);
     }
 
     @Test
     void shouldHaveCorrectBlobLength() {
         byte[] originalData = new byte[100];
-        byte[] blob = vaultService.seal(originalData, vaultKey);
+        byte[] blob = vaultService.seal(originalData, Arrays.copyOf(vaultKey, 32));
         
         // Length = 12 (nonce) + 100 (plaintext) + 16 (GCM tag) = 128
         assertThat(blob).hasSize(12 + 100 + 16);
@@ -40,7 +40,7 @@ public class VaultServiceTest {
     @Test
     void shouldThrowExceptionOnWrongKey() {
         byte[] originalData = "secret".getBytes();
-        byte[] blob = vaultService.seal(originalData, vaultKey);
+        byte[] blob = vaultService.seal(originalData, Arrays.copyOf(vaultKey, 32));
 
         byte[] wrongKey = new byte[32];
         Arrays.fill(wrongKey, (byte) 0x99);
@@ -52,24 +52,24 @@ public class VaultServiceTest {
     @Test
     void shouldThrowExceptionOnTamperedCiphertext() {
         byte[] originalData = "secret".getBytes();
-        byte[] blob = vaultService.seal(originalData, vaultKey);
+        byte[] blob = vaultService.seal(originalData, Arrays.copyOf(vaultKey, 32));
 
         // Tamper with the ciphertext (starts at index 12)
         blob[15] ^= 0x01;
 
-        assertThatThrownBy(() -> vaultService.unseal(blob, vaultKey))
+        assertThatThrownBy(() -> vaultService.unseal(blob, Arrays.copyOf(vaultKey, 32)))
                 .isInstanceOf(AEADBadTagException.class);
     }
 
     @Test
     void shouldThrowExceptionOnTamperedNonce() {
         byte[] originalData = "secret".getBytes();
-        byte[] blob = vaultService.seal(originalData, vaultKey);
+        byte[] blob = vaultService.seal(originalData, Arrays.copyOf(vaultKey, 32));
 
         // Tamper with the nonce (indices 0-11)
         blob[5] ^= 0x01;
 
-        assertThatThrownBy(() -> vaultService.unseal(blob, vaultKey))
+        assertThatThrownBy(() -> vaultService.unseal(blob, Arrays.copyOf(vaultKey, 32)))
                 .isInstanceOf(AEADBadTagException.class);
     }
 
@@ -77,8 +77,8 @@ public class VaultServiceTest {
     void shouldProduceDifferentBlobsForSameInput() {
         byte[] originalData = "secret".getBytes();
         
-        byte[] blob1 = vaultService.seal(Arrays.copyOf(originalData, originalData.length), vaultKey);
-        byte[] blob2 = vaultService.seal(Arrays.copyOf(originalData, originalData.length), vaultKey);
+        byte[] blob1 = vaultService.seal(Arrays.copyOf(originalData, originalData.length), Arrays.copyOf(vaultKey, 32));
+        byte[] blob2 = vaultService.seal(Arrays.copyOf(originalData, originalData.length), Arrays.copyOf(vaultKey, 32));
 
         assertThat(blob1).isNotEqualTo(blob2);
     }

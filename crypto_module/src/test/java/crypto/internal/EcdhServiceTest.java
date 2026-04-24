@@ -1,5 +1,6 @@
 package crypto.internal;
 
+import crypto.api.X25519KeyPair;
 import org.junit.jupiter.api.Test;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.security.*;

@@ -25,12 +25,12 @@ public class EncryptionEngineTest {
         byte[] plaintext = Arrays.copyOf(original, original.length);
         byte[] nonce = nonceBuilder.build((short) 1, docUuid, 100L);
 
-        byte[] ciphertext = engine.encrypt(plaintext, teamKey, nonce, aad);
+        byte[] ciphertext = engine.encrypt(plaintext, Arrays.copyOf(teamKey, 32), nonce, aad);
         
         // Plaintext should be zeroed
         assertThat(plaintext).containsOnly((byte) 0);
 
-        byte[] decrypted = engine.decrypt(ciphertext, teamKey, nonce, aad);
+        byte[] decrypted = engine.decrypt(ciphertext, Arrays.copyOf(teamKey, 32), nonce, aad);
         assertThat(decrypted).isEqualTo(original);
     }
 
@@ -38,11 +38,11 @@ public class EncryptionEngineTest {
     void shouldThrowExceptionOnTamperedCiphertext() {
         byte[] original = "padded-content-256".getBytes();
         byte[] nonce = nonceBuilder.build((short) 1, docUuid, 1L);
-        byte[] ciphertext = engine.encrypt(original, teamKey, nonce, aad);
+        byte[] ciphertext = engine.encrypt(original, Arrays.copyOf(teamKey, 32), nonce, aad);
 
         ciphertext[5] ^= 0x01; // Tamper
 
-        assertThatThrownBy(() -> engine.decrypt(ciphertext, teamKey, nonce, aad))
+        assertThatThrownBy(() -> engine.decrypt(ciphertext, Arrays.copyOf(teamKey, 32), nonce, aad))
                 .isInstanceOf(AEADBadTagException.class);
     }
 
@@ -50,7 +50,7 @@ public class EncryptionEngineTest {
     void shouldThrowExceptionOnWrongKey() {
         byte[] original = "padded-content-256".getBytes();
         byte[] nonce = nonceBuilder.build((short) 1, docUuid, 1L);
-        byte[] ciphertext = engine.encrypt(original, teamKey, nonce, aad);
+        byte[] ciphertext = engine.encrypt(original, Arrays.copyOf(teamKey, 32), nonce, aad);
 
         byte[] wrongKey = new byte[32];
         Arrays.fill(wrongKey, (byte) 0x99);
@@ -63,12 +63,12 @@ public class EncryptionEngineTest {
     void shouldThrowExceptionOnWrongAAD() {
         byte[] original = "padded-content-256".getBytes();
         byte[] nonce = nonceBuilder.build((short) 1, docUuid, 1L);
-        byte[] ciphertext = engine.encrypt(original, teamKey, nonce, aad);
+        byte[] ciphertext = engine.encrypt(original, Arrays.copyOf(teamKey, 32), nonce, aad);
 
         byte[] wrongAad = new byte[20];
         Arrays.fill(wrongAad, (byte) 0x33);
 
-        assertThatThrownBy(() -> engine.decrypt(ciphertext, teamKey, nonce, wrongAad))
+        assertThatThrownBy(() -> engine.decrypt(ciphertext, Arrays.copyOf(teamKey, 32), nonce, wrongAad))
                 .isInstanceOf(AEADBadTagException.class);
     }
 
@@ -76,11 +76,11 @@ public class EncryptionEngineTest {
     void shouldThrowExceptionOnWrongNonce() {
         byte[] original = "padded-content-256".getBytes();
         byte[] nonce = nonceBuilder.build((short) 1, docUuid, 1L);
-        byte[] ciphertext = engine.encrypt(original, teamKey, nonce, aad);
+        byte[] ciphertext = engine.encrypt(original, Arrays.copyOf(teamKey, 32), nonce, aad);
 
         byte[] wrongNonce = nonceBuilder.build((short) 1, docUuid, 2L);
 
-        assertThatThrownBy(() -> engine.decrypt(ciphertext, teamKey, wrongNonce, aad))
+        assertThatThrownBy(() -> engine.decrypt(ciphertext, Arrays.copyOf(teamKey, 32), wrongNonce, aad))
                 .isInstanceOf(AEADBadTagException.class);
     }
 

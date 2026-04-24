@@ -1,59 +1,111 @@
+package auth.service;
+
 import auth.model.User;
+import crypto.api.X25519KeyPair;
+import java.security.SecureRandom;
+import java.util.Arrays;
+import auth.session.SessionState;
+import javax.crypto.AEADBadTagException;
 
-public class AuthService
-{
-  private CryptoAdapter cryptoAdapter;
+public class AuthService {
 
-  public AuthService(CryptoAdapter cryptoAdapter)
-  {
-    this.cryptoAdapter = cryptoAdapter;
-  }
+    private final CryptoAdapter cryptoAdapter;
 
-  public User register(String email, char[] password)
-  {
-    // Step 1: Generate salt
-    byte[] salt = generateSalt();
-
-    // Step 2: Derive master key (via crypto module)
-    byte[] masterKey = cryptoAdapter.deriveMasterKey(password, salt);
-
-    // Step 3: Derive vault key
-    byte[] vaultKey = cryptoAdapter.deriveVaultKey(masterKey);
-
-    // Step 4: Generate key pair
-    byte[][] keyPair = cryptoAdapter.generateKeyPair();
-
-    byte[] publicKey = keyPair[0];
-    byte[] privateKey = keyPair[1];
-
-    // Step 5: Encrypt private key (vault)
-    byte[] encryptedVault = cryptoAdapter.encryptVault(privateKey, vaultKey);
-
-    // Step 6: Create user object
-    User user = new User();
-    user.setEmail(email);
-    user.setPublicKey(publicKey);
-    user.setKeyVault(encryptedVault);
-    user.setSalt(salt);
-
-    // Cleanup sensitive data
-    zeroArray(masterKey);
-    zeroArray(privateKey);
-
-    return user;
-  }
-
-  private byte[] generateSalt()
-  {
-    return new byte[16]; // placeholder
-  }
-
-  private void zeroArray(byte[] arr)
-  {
-    if (arr != null)
-    {
-      for (int i = 0; i < arr.length; i++)
-        arr[i] = 0;
+    public AuthService(CryptoAdapter cryptoAdapter) {
+        this.cryptoAdapter = cryptoAdapter;
     }
-  }
+
+    public User register(String email, char[] password) {
+        byte[] salt = generateSalt();
+        byte[] masterKey = null;
+        byte[] vaultKey = null;
+        byte[] authKey = null;
+        X25519KeyPair keyPair = null;
+        byte[] privateKeyBytes = null;
+        byte[] publicKeyBytes = null;
+        byte[] vaultBlob = null;
+
+        try {
+            // Step 1: Master Key
+            masterKey = cryptoAdapter.deriveMasterKey(password, salt);
+
+            // Step 2: Vault Key
+            vaultKey = cryptoAdapter.deriveVaultKey(masterKey);
+
+            // Step 3: Auth Signing Key
+            authKey = cryptoAdapter.deriveAuthKey(masterKey);
+
+            // Step 4: Key Pair
+            keyPair = cryptoAdapter.generateKeyPair();
+            publicKeyBytes = cryptoAdapter.extractPublicKeyBytes(keyPair.publicKey());
+            privateKeyBytes = keyPair.privateKeyBytes();
+
+            // Step 5: Vault Encryption
+            vaultBlob = cryptoAdapter.encryptVault(privateKeyBytes, vaultKey);
+
+            // Create user object
+            User user = new User();
+            user.setEmail(email);
+            user.setPublicKey(publicKeyBytes);
+            user.setKeyVault(vaultBlob);
+            user.setSalt(salt);
+
+            return user;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Registration failed", e);
+        } finally {
+            // ✅ Secure cleanup (VERY IMPORTANT)
+            if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
+            if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
+            if (authKey != null) Arrays.fill(authKey, (byte) 0);
+            if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
+            if (password != null) Arrays.fill(password, '0');
+        }
+    }
+
+    public SessionState login(String email, char[] password, byte[] salt,
+                              byte[] vaultBlob, byte[] publicKeyBytes)
+            throws AEADBadTagException {
+        
+        byte[] masterKey = null;
+        byte[] vaultKey = null;
+        byte[] authKey = null;
+        byte[] privateKeyBytes = null;
+        java.security.PrivateKey privateKey = null;
+
+        try {
+            // Step 1: Master Key
+            masterKey = cryptoAdapter.deriveMasterKey(password, salt);
+
+            // Step 2: Vault Key
+            vaultKey = cryptoAdapter.deriveVaultKey(masterKey);
+
+            // Step 3: Auth Signing Key
+            authKey = cryptoAdapter.deriveAuthKey(masterKey);
+
+            // Step 4: Decrypt Vault
+            privateKeyBytes = cryptoAdapter.decryptVault(vaultBlob, vaultKey);
+            // AEADBadTagException propagates if password is wrong
+
+            // Step 5: Load Private Key
+            privateKey = cryptoAdapter.loadPrivateKey(privateKeyBytes);
+
+            // Step 6: Create SessionState
+            return new SessionState(email, authKey, privateKey, publicKeyBytes);
+
+        } finally {
+            // Step 7: Zero sensitive material
+            if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
+            if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
+            if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
+            // authKey is NOT zeroed here as it is stored in SessionState
+        }
+    }
+
+    private byte[] generateSalt() {
+        byte[] salt = new byte[16];
+        new SecureRandom().nextBytes(salt);
+        return salt;
+    }
 }
