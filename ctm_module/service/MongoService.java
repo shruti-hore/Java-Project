@@ -7,6 +7,7 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 
 import java.util.*;
+import java.io.*;
 
 import static com.mongodb.client.model.Filters.eq;
 
@@ -16,8 +17,22 @@ public class MongoService {
     private final MongoDatabase db;
 
     public MongoService() {
-        MongoClient client = MongoClients.create("mongodb://localhost:27017");
-        db = client.getDatabase("taskdb");
+        String uri = "mongodb://localhost:27017";
+        String dbName = "taskdb";
+
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
+            Properties prop = new Properties();
+            if (input != null) {
+                prop.load(input);
+                uri = prop.getProperty("mongo.uri", uri);
+                dbName = prop.getProperty("mongo.db", dbName);
+            }
+        } catch (IOException ex) {
+            // Fallback to defaults
+        }
+
+        MongoClient client = MongoClients.create(uri);
+        db = client.getDatabase(dbName);
         collection = db.getCollection("tasks");
     }
 
