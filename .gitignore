@@ -16,3 +16,8 @@ target/
 *.zip
 *.tar.gz
 *.rar
+
+# Environment Variables
+.env
+.env.*
+.env.example
