@@ -6,6 +6,9 @@
 **/builder/
 **/MD files/
 
+# File to ignore
+forclaude.md
+
 # Maven/Java
 target/
 *.class
