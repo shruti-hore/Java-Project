@@ -1,3 +1,5 @@
+package auth.model;
+
 public class User
 {
   private String email;
@@ -24,4 +26,9 @@ public class User
   {
     this.salt = salt;
   }
+
+  public String getEmail() { return email; }
+  public byte[] getPublicKey() { return publicKey; }
+  public byte[] getKeyVault() { return keyVault; }
+  public byte[] getSalt() { return salt; }
 }
