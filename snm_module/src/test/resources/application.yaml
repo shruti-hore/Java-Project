@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/test-db # We still mock MongoDB or just let it fail if not used in this slice
+
+server:
+  pepper: "test-pepper"
+  jwt-secret: "test-jwt-secret-long-enough-for-hs256-signing"
