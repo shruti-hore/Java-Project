@@ -24,6 +24,9 @@ import ui.views.MyTasksView;
 import ui.views.SidebarView;
 import utils.UserSession;
 import utils.ValidationUtils;
+import exceptions.EmptyFieldException;
+import exceptions.InvalidEmailException;
+import exceptions.WeakPasswordException;
 
 public class DashboardUI extends Application {
 
@@ -88,18 +91,44 @@ public class DashboardUI extends Application {
 
         loginBtn.setOnAction(e -> {
             String email = emailField.getText();
-            if (!ValidationUtils.isValidEmail(email)) {
-                showError("Invalid Email! Must be a valid @gmail.com address.");
-                return;
+            String password = passField.getText();
+            try {
+                validateInputs(email, password);
+                User user = new User();
+                user.setEmail(email.trim());
+                UserSession.login(user);
+                initializeDashboard();
+            } catch (EmptyFieldException | InvalidEmailException | WeakPasswordException ex) {
+                showError(ex.getMessage());
             }
-            User user = new User();
-            user.setEmail(email);
-            UserSession.login(user);
-            initializeDashboard();
         });
 
         loginBox.getChildren().addAll(title, new Label("Manage your tasks efficiently"), fields, loginBtn);
         mainStack.getChildren().add(loginBox);
+    }
+
+    private void validateInputs(String email, String password) throws EmptyFieldException, InvalidEmailException, WeakPasswordException {
+        if (email == null || email.trim().isEmpty()) {
+            throw new EmptyFieldException("Email cannot be empty");
+        }
+        if (password == null || password.isEmpty()) {
+            throw new EmptyFieldException("Password cannot be empty");
+        }
+        
+        String trimmedEmail = email.trim();
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.com$";
+        if (!trimmedEmail.matches(emailRegex)) {
+            throw new InvalidEmailException("Enter a valid email address ending in .com");
+        }
+        
+        if (password.length() < 8) {
+            throw new WeakPasswordException("Password must be at least 8 characters");
+        }
+        
+        String passRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!]).{8,}$";
+        if (!password.matches(passRegex)) {
+            throw new WeakPasswordException("Include uppercase, lowercase, number and special character");
+        }
     }
 
     private void initializeDashboard() {
