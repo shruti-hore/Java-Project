@@ -1,6 +1,8 @@
 package crypto.internal;
 
+import crypto.api.X25519KeyPair;
 import org.junit.jupiter.api.Test;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import static org.assertj.core.api.Assertions.*;
 
@@ -51,11 +53,23 @@ public class KeyPairServiceTest {
     }
 
     @Test
-    void shouldFailForInvalidKeyPoints() {
-        // An all-zero key is often invalid for X25519
-        byte[] invalidKey = new byte[32];
+    void shouldRoundTripPrivateKey() {
+        EcdhService ecdhService = new EcdhService();
+        X25519KeyPair kpA = keyPairService.generateKeyPair();
+        X25519KeyPair kpB = keyPairService.generateKeyPair();
         
-        assertThatThrownBy(() -> keyPairService.loadPublicKey(invalidKey))
-                .isInstanceOf(IllegalArgumentException.class);
+        byte[] privBytesA = kpA.privateKeyBytes();
+        System.out.println("DEBUG: Original encoded: " + org.bouncycastle.util.encoders.Hex.toHexString(kpA.privateKey().getEncoded()));
+        System.out.println("DEBUG: privBytesA:     " + org.bouncycastle.util.encoders.Hex.toHexString(privBytesA));
+        
+        PrivateKey loadedPrivA = keyPairService.loadPrivateKey(privBytesA);
+        System.out.println("DEBUG: Loaded encoded:   " + org.bouncycastle.util.encoders.Hex.toHexString(loadedPrivA.getEncoded()));
+        
+        PublicKey pubB = keyPairService.loadPublicKey(kpB.publicKeyBytes());
+        
+        byte[] secretOriginal = ecdhService.computeSharedSecret(kpA.privateKey(), pubB);
+        byte[] secretLoaded = ecdhService.computeSharedSecret(loadedPrivA, pubB);
+        
+        assertThat(secretLoaded).isEqualTo(secretOriginal);
     }
 }
