@@ -20,7 +20,10 @@ import java.io.File;
 import java.time.LocalDate;
 import client.model.Task;
 import model.User;
+import java.util.List;
 import service.TaskService;
+import service.AuthService;
+import service.TeamService;
 import ui.views.DashboardView;
 import ui.views.MyTasksView;
 import ui.views.SidebarView;
@@ -40,6 +43,14 @@ public class DashboardUI extends Application {
     private DashboardView dashboardView;
     private MyTasksView myTasksView;
     private ui.views.CalendarView calendarView;
+    private ui.views.WorkspaceView workspaceView;
+    private AuthService authService = new AuthService();
+    private TeamService teamService = new TeamService();
+    
+    private boolean isLoginMode = true;
+    private Label loginErrorLabel = new Label();
+    private PasswordField confirmPassField = new PasswordField();
+    private Label confirmPassLbl = new Label("CONFIRM PASSWORD");
 
     @Override
     public void start(Stage stage) {
@@ -70,52 +81,89 @@ public class DashboardUI extends Application {
     private void showLoginScreen() {
         mainStack.getChildren().clear();
         mainStack.setStyle("-fx-background-color: #f5f6fa;");
-
-        VBox loginBox = new VBox(25);
+        
+        VBox loginBox = new VBox(20);
         loginBox.setAlignment(Pos.CENTER);
-        loginBox.setMaxSize(400, 480);
-        loginBox.setStyle(
-                "-fx-background-color: white; -fx-padding: 50; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
+        loginBox.setMaxSize(400, 580);
+        loginBox.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
 
-        Label title = new Label("SECURE TASKER");
-        title.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 32px; -fx-font-weight: bold;");
+        Label title = new Label(isLoginMode ? "SECURE SIGN IN" : "CREATE ACCOUNT");
+        title.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 28px; -fx-font-weight: bold;");
+
+        loginErrorLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-font-weight: bold;");
+        loginErrorLabel.setWrapText(true);
+        loginErrorLabel.setText("");
 
         VBox fields = new VBox(10);
         Label eLbl = new Label("EMAIL ADDRESS");
         eLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         TextField emailField = new TextField();
         emailField.setPromptText("Enter your email");
-        emailField.setStyle(
-                "-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+        emailField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
         Label pLbl = new Label("PASSWORD");
         pLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         PasswordField passField = new PasswordField();
         passField.setPromptText("Enter your password");
-        passField.setStyle(
-                "-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
-        fields.getChildren().addAll(eLbl, emailField, new Region(), pLbl, passField);
+        passField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
-        Button loginBtn = new Button("SIGN IN");
-        loginBtn.setMaxWidth(Double.MAX_VALUE);
-        loginBtn.getStyleClass().add("button-primary");
-        loginBtn.setPrefHeight(50);
+        confirmPassLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
+        confirmPassField.setPromptText("Confirm your password");
+        confirmPassField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
-        loginBtn.setOnAction(e -> {
+        fields.getChildren().addAll(eLbl, emailField, pLbl, passField);
+        if (!isLoginMode) {
+            fields.getChildren().addAll(confirmPassLbl, confirmPassField);
+        }
+
+        Button actionBtn = new Button(isLoginMode ? "SIGN IN" : "REGISTER");
+        actionBtn.setMaxWidth(Double.MAX_VALUE);
+        actionBtn.getStyleClass().add("button-primary");
+        actionBtn.setPrefHeight(50);
+
+        actionBtn.setOnAction(e -> {
             String email = emailField.getText();
             String password = passField.getText();
+            loginErrorLabel.setText("");
+
             try {
                 validateInputs(email, password);
-                User user = new User();
-                user.setEmail(email.trim());
-                UserSession.login(user);
-                initializeDashboard();
+                if (!isLoginMode) {
+                    if (!password.equals(confirmPassField.getText())) {
+                        loginErrorLabel.setText("Passwords do not match!");
+                        return;
+                    }
+                    if (authService.register(email, password)) {
+                        isLoginMode = true;
+                        showLoginScreen();
+                        loginErrorLabel.setText("Registration successful! Please sign in.");
+                        loginErrorLabel.setStyle("-fx-text-fill: #10b981; -fx-font-size: 12px; -fx-font-weight: bold;");
+                    } else {
+                        loginErrorLabel.setText("User already exists!");
+                    }
+                } else {
+                    if (authService.login(email, password)) {
+                        User user = new User();
+                        user.setEmail(email.trim());
+                        UserSession.login(user);
+                        initializeDashboard();
+                    } else {
+                        loginErrorLabel.setText("Invalid email or password.");
+                    }
+                }
             } catch (EmptyFieldException | InvalidEmailException | WeakPasswordException ex) {
-                showError(ex.getMessage());
+                loginErrorLabel.setText(ex.getMessage());
             }
         });
 
-        loginBox.getChildren().addAll(title, new Label("Manage your tasks efficiently"), fields, loginBtn);
+        Button toggleBtn = new Button(isLoginMode ? "Don't have an account? Register" : "Already have an account? Sign In");
+        toggleBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-cursor: hand;");
+        toggleBtn.setOnAction(e -> {
+            isLoginMode = !isLoginMode;
+            showLoginScreen();
+        });
+
+        loginBox.getChildren().addAll(title, loginErrorLabel, fields, actionBtn, toggleBtn);
         mainStack.getChildren().add(loginBox);
     }
 
@@ -145,40 +193,110 @@ public class DashboardUI extends Application {
     }
 
     private void initializeDashboard() {
+        showWorkspaceSelection();
+    }
+
+    private void showWorkspaceSelection() {
         mainStack.getChildren().clear();
         String userEmail = UserSession.getCurrentUserEmail();
+        List<model.Team> teams = teamService.getTeamsForUser(userEmail);
 
-        taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
+        workspaceView = new ui.views.WorkspaceView(
+            teams,
+            this::initializeMainApp,
+            this::handleCreateTeam,
+            this::handleJoinTeam
+        );
 
+        mainStack.getChildren().add(workspaceView);
+    }
+
+    private void handleCreateTeam() {
+        VBox form = new VBox(20);
+        form.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        form.setMaxSize(400, 300);
+        form.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Create Workspace");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Team Name");
+        nameField.setStyle("-fx-background-color: #f9fafb; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
+        Button submit = new Button("CREATE TEAM");
+        submit.setMaxWidth(Double.MAX_VALUE);
+        submit.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 12; -fx-cursor: hand;");
+        
+        submit.setOnAction(e -> {
+            String name = nameField.getText();
+            if (name == null || name.trim().isEmpty()) {
+                // Show local error or label
+                return;
+            }
+            teamService.createTeam(name, UserSession.getCurrentUserEmail());
+            hideOverlay();
+            showWorkspaceSelection();
+        });
+
+        form.getChildren().addAll(title, nameField, submit);
+        showOverlay(form);
+    }
+
+    private void handleJoinTeam() {
+        VBox form = new VBox(20);
+        form.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        form.setMaxSize(400, 300);
+        form.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Join Workspace");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        TextField idField = new TextField();
+        idField.setPromptText("Enter Team ID");
+        idField.setStyle("-fx-background-color: #f9fafb; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
+        Button submit = new Button("JOIN TEAM");
+        submit.setMaxWidth(Double.MAX_VALUE);
+        submit.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 12; -fx-cursor: hand;");
+        
+        submit.setOnAction(e -> {
+            String id = idField.getText();
+            if (id == null || id.trim().isEmpty()) {
+                return;
+            }
+            teamService.joinTeam(id, UserSession.getCurrentUserEmail());
+            hideOverlay();
+            showWorkspaceSelection();
+        });
+
+        form.getChildren().addAll(title, idField, submit);
+        showOverlay(form);
+    }
+
+    private void initializeMainApp(model.Team selectedTeam) {
+        mainStack.getChildren().clear();
+        String userEmail = UserSession.getCurrentUserEmail();
+        
+        taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, selectedTeam.getId()));
+        
         dashboardView = new DashboardView(taskList);
         myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, t -> {
-            if (showConfirmation("Delete Task", "Are you sure you want to delete this task?")) {
+            showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
                 taskService.deleteTask(t.getId());
                 taskList.remove(t);
                 myTasksView.refresh();
-            }
+            });
         });
         calendarView = new ui.views.CalendarView(taskList);
-
+        
         SidebarView sidebar = new SidebarView(viewKey -> {
-            switch (viewKey) {
-                case "DASHBOARD":
-                    mainRoot.setCenter(dashboardView);
-                    break;
-                case "KANBAN":
-                    mainRoot.setCenter(myTasksView);
-                    myTasksView.refresh();
-                    break;
-                case "CALENDAR":
-                    mainRoot.setCenter(calendarView);
-                    calendarView.refresh();
-                    break;
-                case "LOGOUT":
-                    UserSession.logout();
-                    showLoginScreen();
-                    break;
-                default:
-                    showError("Module coming soon!");
+            switch(viewKey) {
+                case "DASHBOARD": mainRoot.setCenter(dashboardView); break;
+                case "KANBAN": mainRoot.setCenter(myTasksView); myTasksView.refresh(); break;
+                case "CALENDAR": mainRoot.setCenter(calendarView); calendarView.refresh(); break;
+                case "LOGOUT": UserSession.logout(); showLoginScreen(); break;
+                default: showError("Module coming soon!");
             }
         });
 
@@ -188,7 +306,7 @@ public class DashboardUI extends Application {
             mainRoot.setCenter(myTasksView);
             myTasksView.refresh();
         });
-
+        
         mainRoot = new BorderPane();
         mainRoot.setLeft(sidebar);
         mainRoot.setCenter(dashboardView);
@@ -321,17 +439,57 @@ public class DashboardUI extends Application {
     }
 
     private void showError(String msg) {
-        Alert a = new Alert(Alert.AlertType.ERROR);
-        a.setContentText(msg);
-        a.show();
+        VBox box = new VBox(20);
+        box.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        box.setMaxSize(400, 200);
+        box.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Error");
+        title.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 20px; -fx-font-weight: bold;");
+        
+        Label content = new Label(msg);
+        content.setWrapText(true);
+        content.setStyle("-fx-text-fill: #374151;");
+
+        Button ok = new Button("OK");
+        ok.setPrefWidth(100);
+        ok.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 8;");
+        ok.setOnAction(e -> hideOverlay());
+
+        box.getChildren().addAll(title, content, ok);
+        showOverlay(box);
     }
 
-    private boolean showConfirmation(String title, String content) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(content);
-        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+    private void showConfirmation(String titleStr, String contentStr, Runnable onConfirm) {
+        VBox box = new VBox(20);
+        box.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        box.setMaxSize(400, 200);
+        box.setAlignment(Pos.CENTER);
+
+        Label title = new Label(titleStr);
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+        
+        Label content = new Label(contentStr);
+        content.setWrapText(true);
+        content.setStyle("-fx-text-fill: #374151;");
+
+        HBox buttons = new HBox(15);
+        buttons.setAlignment(Pos.CENTER);
+        
+        Button cancel = new Button("CANCEL");
+        cancel.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 8;");
+        cancel.setOnAction(e -> hideOverlay());
+
+        Button confirm = new Button("CONFIRM");
+        confirm.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 20; -fx-background-radius: 8;");
+        confirm.setOnAction(e -> {
+            hideOverlay();
+            onConfirm.run();
+        });
+
+        buttons.getChildren().addAll(cancel, confirm);
+        box.getChildren().addAll(title, content, buttons);
+        showOverlay(box);
     }
 
     public static void main(String[] args) {

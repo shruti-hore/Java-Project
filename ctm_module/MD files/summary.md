@@ -23,7 +23,9 @@ The `service` package handles all database interactions and business logic.
 - **`MongoService`**: Handles direct MongoDB operations (`mongodb-driver-sync`).
   - **Methods**: `addTask()`, `getTasks()`, `deleteTask()`, `updateStatus()`, `updateCompletion()`, `updateTask()` (Now fully implemented).
 - **`TaskService`**: An abstraction layer over `MongoService` (Clean Architecture), which provides the data to the UI layer.
-- **`WorkflowService`**: Manages business rules and automation logic for tasks.
+- **`AuthService`**: Manages user login and registration logic.
+- **`TeamService`**: Handles workspace creation, joining, and retrieval.
+- **`WorkspaceView`**: New view for team selection and management.
 
 ---
 
