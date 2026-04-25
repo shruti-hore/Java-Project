@@ -46,6 +46,7 @@ public class DashboardUI extends Application {
     private ui.views.WorkspaceView workspaceView;
     private AuthService authService = new AuthService();
     private TeamService teamService = new TeamService();
+    private String selectedTeamId;
     
     private boolean isLoginMode = true;
     private Label loginErrorLabel = new Label();
@@ -193,11 +194,10 @@ public class DashboardUI extends Application {
     }
 
     private void initializeDashboard() {
-        showWorkspaceSelection();
+        initializeMainApp(null);
     }
 
     private void showWorkspaceSelection() {
-        mainStack.getChildren().clear();
         String userEmail = UserSession.getCurrentUserEmail();
         List<model.Team> teams = teamService.getTeamsForUser(userEmail);
 
@@ -208,7 +208,7 @@ public class DashboardUI extends Application {
             this::handleJoinTeam
         );
 
-        mainStack.getChildren().add(workspaceView);
+        mainRoot.setCenter(workspaceView);
     }
 
     private void handleCreateTeam() {
@@ -278,39 +278,62 @@ public class DashboardUI extends Application {
         mainStack.getChildren().clear();
         String userEmail = UserSession.getCurrentUserEmail();
         
-        taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, selectedTeam.getId()));
-        
-        dashboardView = new DashboardView(taskList);
-        myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, t -> {
-            showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
-                taskService.deleteTask(t.getId());
-                taskList.remove(t);
-                myTasksView.refresh();
-            });
-        });
-        calendarView = new ui.views.CalendarView(taskList);
+        mainRoot = new BorderPane();
         
         SidebarView sidebar = new SidebarView(viewKey -> {
             switch(viewKey) {
-                case "DASHBOARD": mainRoot.setCenter(dashboardView); break;
-                case "KANBAN": mainRoot.setCenter(myTasksView); myTasksView.refresh(); break;
-                case "CALENDAR": mainRoot.setCenter(calendarView); calendarView.refresh(); break;
+                case "TEAMS": showWorkspaceSelection(); break;
+                case "DASHBOARD": 
+                    if (selectedTeam == null) showError("Please select a workspace first!");
+                    else mainRoot.setCenter(dashboardView); 
+                    break;
+                case "KANBAN": 
+                    if (selectedTeam == null) showError("Please select a workspace first!");
+                    else { mainRoot.setCenter(myTasksView); myTasksView.refresh(); }
+                    break;
+                case "CALENDAR": 
+                    if (selectedTeam == null) {
+                        ObservableList<Task> allTasks = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
+                        ui.views.CalendarView globalCal = new ui.views.CalendarView(allTasks);
+                        mainRoot.setCenter(globalCal);
+                    } else { 
+                        mainRoot.setCenter(calendarView); 
+                        calendarView.refresh(); 
+                    }
+                    break;
                 case "LOGOUT": UserSession.logout(); showLoginScreen(); break;
                 default: showError("Module coming soon!");
             }
-        });
+        }, selectedTeam != null);
 
+        sidebar.getAddTaskBtn().setDisable(selectedTeam == null);
         sidebar.getAddTaskBtn().setOnAction(e -> handleEditAction(null));
-        dashboardView.getAddTaskButton().setOnAction(e -> handleEditAction(null));
-        dashboardView.getViewTasksButton().setOnAction(e -> {
-            mainRoot.setCenter(myTasksView);
-            myTasksView.refresh();
-        });
-        
-        mainRoot = new BorderPane();
-        mainRoot.setLeft(sidebar);
-        mainRoot.setCenter(dashboardView);
 
+        if (selectedTeam != null) {
+            this.selectedTeamId = selectedTeam.getId();
+            taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, selectedTeamId));
+            dashboardView = new DashboardView(taskList, selectedTeam);
+            myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, t -> {
+                showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
+                    taskService.deleteTask(t.getId());
+                    taskList.remove(t);
+                    myTasksView.refresh();
+                });
+            });
+            calendarView = new ui.views.CalendarView(taskList);
+
+            dashboardView.getAddTaskButton().setOnAction(e -> handleEditAction(null));
+            dashboardView.getViewTasksButton().setOnAction(e -> {
+                mainRoot.setCenter(myTasksView);
+                myTasksView.refresh();
+            });
+
+            mainRoot.setCenter(dashboardView);
+        } else {
+            showWorkspaceSelection();
+        }
+
+        mainRoot.setLeft(sidebar);
         mainStack.getChildren().add(mainRoot);
     }
 
@@ -356,7 +379,7 @@ public class DashboardUI extends Application {
             }
 
             Task newTask = new Task(null, title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
-                    UserSession.getCurrentUserEmail(), null);
+                    UserSession.getCurrentUserEmail(), selectedTeamId);
             taskService.addTask(newTask);
             taskList.add(newTask);
             myTasksView.refresh();

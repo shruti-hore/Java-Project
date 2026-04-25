@@ -35,8 +35,11 @@ public class DashboardView extends BorderPane {
     public Button getAddTaskButton() { return addTaskButton; }
     public Button getViewTasksButton() { return viewTasksButton; }
 
-    public DashboardView(ObservableList<Task> tasks) {
+    private model.Team team;
+
+    public DashboardView(ObservableList<Task> tasks, model.Team team) {
         this.taskList = tasks;
+        this.team = team;
         getStyleClass().add("root");
 
         // --- TOP BAR ---
@@ -47,11 +50,10 @@ public class DashboardView extends BorderPane {
         centerContent.setPadding(new Insets(30));
         
         centerContent.getChildren().addAll(
-            createWelcomeCard(),
-            createWorkspaceSection(),
+            createTeamHeader(),
+            createTeamMembersSection(),
             createStatsRow(),
-            createWorkloadAnalysisSection(),
-            createWorkProgressSection()
+            createTimelineSection()
         );
 
         ScrollPane scrollPane = new ScrollPane(centerContent);
@@ -61,6 +63,72 @@ public class DashboardView extends BorderPane {
 
         // --- RIGHT PANEL ---
         setRight(createRightPanel());
+    }
+
+    private VBox createTeamHeader() {
+        VBox header = new VBox(10);
+        header.setPadding(new Insets(30));
+        header.setStyle("-fx-background-color: linear-gradient(to right, #4f46e5, #8b5cf6); -fx-background-radius: 20;");
+
+        Label teamName = new Label(team != null ? team.getName().toUpperCase() : "NO TEAM SELECTED");
+        teamName.setStyle("-fx-text-fill: white; -fx-font-size: 28px; -fx-font-weight: bold;");
+
+        Label position = new Label("YOUR POSITION: OWNER"); // Placeholder for now
+        position.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        header.getChildren().addAll(teamName, position);
+        return header;
+    }
+
+    private VBox createTeamMembersSection() {
+        VBox section = new VBox(15);
+        section.setStyle("-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+
+        Label title = new Label("TEAM MEMBERS");
+        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-font-size: 14px;");
+
+        HBox membersBox = new HBox(15);
+        membersBox.setAlignment(Pos.CENTER_LEFT);
+
+        if (team != null && team.getMembers() != null) {
+            for (String member : team.getMembers()) {
+                VBox m = new VBox(5);
+                m.setAlignment(Pos.CENTER);
+                Region avatar = new Region();
+                avatar.setPrefSize(40, 40);
+                avatar.setStyle("-fx-background-color: #f3f4f6; -fx-background-radius: 20; -fx-border-color: #e5e7eb; -fx-border-radius: 20;");
+                Label name = new Label(member.split("@")[0]);
+                name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6b7280;");
+                m.getChildren().addAll(avatar, name);
+                membersBox.getChildren().add(m);
+            }
+        }
+
+        section.getChildren().addAll(title, membersBox);
+        return section;
+    }
+
+    private VBox createTimelineSection() {
+        VBox section = new VBox(15);
+        section.setStyle("-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+
+        Label title = new Label("TEAM TIMELINE (RECENT ACTIVITY)");
+        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-font-size: 14px;");
+
+        VBox list = new VBox(10);
+        int count = 0;
+        for (Task t : taskList) {
+            if (count >= 5) break;
+            Label item = new Label("• " + t.getTitle() + " - " + t.getStatus() + " (" + t.getDeadline() + ")");
+            item.setStyle("-fx-text-fill: #4b5563; -fx-font-size: 13px;");
+            list.getChildren().add(item);
+            count++;
+        }
+
+        if (count == 0) list.getChildren().add(new Label("No recent activity."));
+
+        section.getChildren().addAll(title, list);
+        return section;
     }
 
     private HBox createTopBar() {

@@ -14,7 +14,7 @@ public class SidebarView extends VBox {
     private Label activeNav;
     private final Button addTaskBtn;
 
-    public SidebarView(Consumer<String> navigateAction) {
+    public SidebarView(Consumer<String> navigateAction, boolean teamSelected) {
         this.onNavigate = navigateAction;
         setPrefWidth(240);
         getStyleClass().add("sidebar");
@@ -39,30 +39,44 @@ public class SidebarView extends VBox {
         
         profile.getChildren().addAll(avatar, name, role);
 
-        Label dashboardNav = createNavItem("Dashboard", "DASHBOARD");
-        Label trackingNav = createNavItem("Tracking", "KANBAN");
-        Label projectsNav = createNavItem("Projects", "PROJECTS");
-        Label historyNav = createNavItem("Work History", "HISTORY");
+        Label teamsNav = createNavItem("Teams", "TEAMS");
+        Label calendarNav = createNavItem("Calendar", "CALENDAR");
         
+        VBox navBox = new VBox(5);
+        navBox.setPadding(new Insets(0, 15, 0, 15));
+        navBox.getChildren().addAll(teamsNav, calendarNav);
+
+        if (teamSelected) {
+            Label dashboardNav = createNavItem("Dashboard", "DASHBOARD");
+            Label trackingNav = createNavItem("Tracking", "KANBAN");
+            Label projectsNav = createNavItem("Projects", "PROJECTS");
+            Label historyNav = createNavItem("Work History", "HISTORY");
+            
+            navBox.getChildren().add(1, dashboardNav);
+            navBox.getChildren().add(2, trackingNav);
+            navBox.getChildren().add(3, projectsNav);
+            navBox.getChildren().add(4, historyNav);
+        }
+
         Label toolsHeader = new Label("TOOLS");
         toolsHeader.setStyle("-fx-text-fill: #9ca3af; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 30 20 10 20;");
         
-        Label inboxNav = createNavItem("Inbox", "INBOX");
         Label settingsNav = createNavItem("Settings", "SETTINGS");
         Label logoutNav = createNavItem("Logout", "LOGOUT");
 
-        VBox navBox = new VBox(5, dashboardNav, trackingNav, projectsNav, historyNav, toolsHeader, inboxNav, settingsNav, logoutNav);
-        navBox.setPadding(new Insets(0, 15, 0, 15));
+        navBox.getChildren().addAll(toolsHeader, settingsNav, logoutNav);
 
         addTaskBtn = new Button("+ Add New Task");
         addTaskBtn.getStyleClass().add("button-primary");
         addTaskBtn.setMaxWidth(Double.MAX_VALUE);
+        addTaskBtn.setDisable(!teamSelected);
         VBox.setMargin(addTaskBtn, new Insets(40, 20, 20, 20));
 
         getChildren().addAll(profile, navBox, new Region(), addTaskBtn);
         VBox.setVgrow(getChildren().get(2), Priority.ALWAYS);
 
-        selectNav(dashboardNav);
+        if (teamSelected) selectNav((Label)navBox.getChildren().get(1)); // Default to Dashboard
+        else selectNav(teamsNav); // Default to Teams
     }
 
     private Label createNavItem(String text, String viewKey) {

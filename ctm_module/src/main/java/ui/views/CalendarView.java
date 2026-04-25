@@ -22,15 +22,16 @@ public class CalendarView extends VBox {
     public CalendarView(List<Task> tasks) {
         this.tasks = tasks;
         this.currentYearMonth = YearMonth.now();
-        setSpacing(20);
+        setSpacing(25);
         setPadding(new Insets(30));
-        setStyle("-fx-background-color: #0d1117;");
+        setStyle("-fx-background-color: #f3f4f6;"); // Match main background
 
         HBox nav = new HBox(20);
         nav.setAlignment(Pos.CENTER_LEFT);
+        nav.setPadding(new Insets(0, 0, 10, 0));
         
         Label title = new Label("CALENDAR");
-        title.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
+        title.setStyle("-fx-text-fill: #1f2937; -fx-font-size: 24px; -fx-font-weight: bold;");
         
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -41,7 +42,7 @@ public class CalendarView extends VBox {
         styleNavBtn(next);
         
         monthLabel = new Label();
-        monthLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold; -fx-min-width: 150px;");
+        monthLabel.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 20px; -fx-font-weight: bold; -fx-min-width: 200px;");
         monthLabel.setAlignment(Pos.CENTER);
 
         prev.setOnAction(e -> { currentYearMonth = currentYearMonth.minusMonths(1); refresh(); });
@@ -50,8 +51,8 @@ public class CalendarView extends VBox {
         nav.getChildren().addAll(title, spacer, prev, monthLabel, next);
 
         calendarGrid = new GridPane();
-        calendarGrid.setHgap(10);
-        calendarGrid.setVgap(10);
+        calendarGrid.setHgap(15);
+        calendarGrid.setVgap(15);
         VBox.setVgrow(calendarGrid, Priority.ALWAYS);
 
         ScrollPane scroll = new ScrollPane(calendarGrid);
@@ -64,17 +65,19 @@ public class CalendarView extends VBox {
     }
 
     private void styleNavBtn(Button btn) {
-        btn.setStyle("-fx-background-color: #21262d; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 8 15; -fx-cursor: hand;");
+        btn.setStyle("-fx-background-color: white; -fx-text-fill: #4f46e5; -fx-background-radius: 10; -fx-padding: 8 18; -fx-cursor: hand; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2); -fx-font-weight: bold;");
     }
 
     public void refresh() {
         calendarGrid.getChildren().clear();
-        monthLabel.setText(currentYearMonth.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + currentYearMonth.getYear());
+        monthLabel.setText(currentYearMonth.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase() + " " + currentYearMonth.getYear());
 
         String[] days = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
         for (int i = 0; i < 7; i++) {
             Label dayLbl = new Label(days[i]);
-            dayLbl.setStyle("-fx-text-fill: #8b949e; -fx-font-weight: bold; -fx-padding: 10;");
+            dayLbl.setStyle("-fx-text-fill: #9ca3af; -fx-font-weight: bold; -fx-font-size: 12px; -fx-padding: 5 0;");
+            dayLbl.setMaxWidth(Double.MAX_VALUE);
+            dayLbl.setAlignment(Pos.CENTER);
             calendarGrid.add(dayLbl, i, 0);
         }
 
@@ -93,27 +96,40 @@ public class CalendarView extends VBox {
     }
 
     private VBox createDayBox(LocalDate date) {
-        VBox box = new VBox(5);
-        box.setMinSize(140, 100);
-        box.setStyle("-fx-background-color: #161b22; -fx-background-radius: 10; -fx-padding: 10; -fx-border-color: #30363d; -fx-border-width: 1;");
+        VBox box = new VBox(8);
+        box.setMinSize(150, 120);
+        
+        boolean isToday = date.equals(LocalDate.now());
+        String bg = isToday ? "#eef2ff" : "white";
+        String border = isToday ? "#4f46e5" : "transparent";
+        
+        box.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 16; -fx-padding: 15; " +
+                     "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.04), 10, 0, 0, 5); " +
+                     "-fx-border-color: " + border + "; -fx-border-width: 2; -fx-border-radius: 16;");
         
         Label dateLbl = new Label(String.valueOf(date.getDayOfMonth()));
-        dateLbl.setStyle("-fx-text-fill: " + (date.equals(LocalDate.now()) ? "#8b5cf6" : "white") + "; -fx-font-weight: bold;");
+        dateLbl.setStyle("-fx-text-fill: " + (isToday ? "#4f46e5" : "#1f2937") + "; -fx-font-weight: bold; -fx-font-size: 16px;");
         
         box.getChildren().add(dateLbl);
 
+        VBox tasksBox = new VBox(4);
         for (Task t : tasks) {
             if (t.getDeadline().equals(date.toString())) {
-                Label taskLbl = new Label("• " + t.getTitle());
-                String color = "#3498db";
-                if ("DONE".equals(t.getStatus())) color = "#2ecc71";
-                else if (date.isBefore(LocalDate.now())) color = "#e74c3c";
+                Label taskLbl = new Label(t.getTitle());
+                taskLbl.setMaxWidth(130);
+                taskLbl.setEllipsisString("...");
                 
-                taskLbl.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 11px;");
-                box.getChildren().add(taskLbl);
+                String taskBg = "#4f46e5";
+                if ("DONE".equals(t.getStatus())) taskBg = "#10b981";
+                else if ("IN_PROGRESS".equals(t.getStatus())) taskBg = "#f59e0b";
+                else if (date.isBefore(LocalDate.now())) taskBg = "#ef4444";
+                
+                taskLbl.setStyle("-fx-background-color: " + taskBg + "; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 4 8; -fx-background-radius: 6;");
+                tasksBox.getChildren().add(taskLbl);
             }
         }
         
+        box.getChildren().add(tasksBox);
         return box;
     }
 }
