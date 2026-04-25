@@ -1,27 +1,30 @@
 package utils;
 
-import model.User;
+import auth.session.SessionState;
 
 public class UserSession {
-    private static User currentUser;
+    private static SessionState session;
 
-    public static void login(User user) {
-        currentUser = user;
+    public static void login(SessionState s) {
+        session = s;
     }
 
     public static void logout() {
-        currentUser = null;
+        if (session != null) {
+            session.zero();
+            session = null;
+        }
     }
 
-    public static User getCurrentUser() {
-        return currentUser;
+    public static SessionState getSession() {
+        return session;
     }
 
     public static boolean isLoggedIn() {
-        return currentUser != null;
+        return session != null;
     }
 
     public static String getCurrentUserEmail() {
-        return currentUser != null ? currentUser.getEmail() : "Guest";
+        return session != null ? session.getUserId() : "Guest";
     }
 }

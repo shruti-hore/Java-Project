@@ -1,49 +1,54 @@
 package service;
-import java.util.List;
+
 import model.Task;
+import java.util.List;
+import java.util.ArrayList;
 
 public class TaskService {
 
-    private MongoService mongo = new MongoService();
-    private WorkflowService workflow = new WorkflowService();
+    private final EncryptedTaskService encryptedTaskService;
+
+    public TaskService(EncryptedTaskService encryptedTaskService) {
+        this.encryptedTaskService = encryptedTaskService;
+    }
 
     public List<Task> getAllTasks(String userId, String teamId) {
-        return mongo.getTasks(userId, teamId);
+        // In the new architecture, tasks are fetched via EncryptedTaskService from the SNM backend.
+        // For now, returning an empty list until the fetch logic is fully integrated.
+        // SyncManager will populate the ObservableList in DashboardUI directly.
+        return new ArrayList<>();
     }
 
     public void addTask(Task t) {
-        workflow.applyRules(t);
-        String id = mongo.addTask(t);
-        t.setId(id);
+        try {
+            // Note: teamKeyVersion and currentVersionSeq should be tracked properly.
+            // Using 1 and 0 as placeholders for now.
+            encryptedTaskService.saveTask(t, t.getTeamId(), (short) 1, 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void updateTask(Task t) {
-        workflow.applyRules(t);
-        mongo.updateTask(t);
+        try {
+            // Logic for version sequencing should be handled by SyncManager/LocalCache
+            encryptedTaskService.saveTask(t, t.getTeamId(), (short) 1, 0);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void deleteTask(String id) {
-        mongo.deleteTask(id);
-    }
-
-    public void markInProgress(Task t) {
-        t.setStatus("IN_PROGRESS");
-        mongo.updateStatus(t.getId(), "IN_PROGRESS");
-    }
-
-    public void markDone(Task t) {
-        updateStatus(t, "DONE");
+        // Delete logic needs to be implemented in SNM backend and EncryptedTaskService
     }
 
     public void updateStatus(Task t, String status) {
         t.setStatus(status);
-        if (status.equals("DONE")) {
+        if ("DONE".equals(status)) {
             t.setCompleted(true);
-            mongo.updateCompletion(t.getId(), true);
         } else {
             t.setCompleted(false);
-            mongo.updateCompletion(t.getId(), false);
         }
-        mongo.updateStatus(t.getId(), status);
+        updateTask(t);
     }
 }

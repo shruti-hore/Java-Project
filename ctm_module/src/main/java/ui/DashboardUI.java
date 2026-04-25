@@ -17,8 +17,20 @@ import javafx.scene.paint.Color;
 import java.io.File;
 import java.time.LocalDate;
 import model.Task;
-import model.User;
 import service.TaskService;
+import ui.http.HttpAuthClient;
+import auth.service.AuthService;
+import auth.service.CryptoAdapter;
+import auth.session.SessionState;
+import service.EncryptedTaskService;
+import crypto.DocumentCryptoService;
+import crypto.internal.CryptoServiceImpl;
+import crypto.NonceCounterStore;
+import java.net.http.HttpClient;
+import java.nio.file.Paths;
+import java.util.List;
+import ui.views.LoginView;
+import ui.views.RegisterView;
 import ui.views.DashboardView;
 import ui.views.MyTasksView;
 import ui.views.SidebarView;
@@ -32,7 +44,19 @@ public class DashboardUI extends Application {
 
     private StackPane mainStack;
     private BorderPane mainRoot;
-    private TaskService taskService = new TaskService();
+    
+    // Secure Services
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final CryptoServiceImpl cryptoService = new CryptoServiceImpl();
+    private final CryptoAdapter cryptoAdapter = new CryptoAdapter(cryptoService);
+    private final AuthService authService = new AuthService(cryptoAdapter);
+    private final NonceCounterStore counterStore = new NonceCounterStore(Paths.get("nonce_store.txt"));
+    private final DocumentCryptoService documentCryptoService = new DocumentCryptoService(cryptoAdapter, counterStore);
+    private EncryptedTaskService encryptedTaskService;
+    private TaskService taskService;
+    private SessionState sessionState;
+    private HttpAuthClient httpAuthClient;
+
     private ObservableList<Task> taskList;
     
     private DashboardView dashboardView;
@@ -67,49 +91,36 @@ public class DashboardUI extends Application {
         mainStack.getChildren().clear();
         mainStack.setStyle("-fx-background-color: #f5f6fa;");
         
-        VBox loginBox = new VBox(25);
-        loginBox.setAlignment(Pos.CENTER);
-        loginBox.setMaxSize(400, 480);
-        loginBox.setStyle("-fx-background-color: white; -fx-padding: 50; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
-
-        Label title = new Label("SECURE TASKER");
-        title.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 32px; -fx-font-weight: bold;");
-
-        VBox fields = new VBox(10);
-        Label eLbl = new Label("EMAIL ADDRESS");
-        eLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
-        TextField emailField = new TextField();
-        emailField.setPromptText("Enter your email");
-        emailField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
-
-        Label pLbl = new Label("PASSWORD");
-        pLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
-        PasswordField passField = new PasswordField();
-        passField.setPromptText("Enter your password");
-        passField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
-        fields.getChildren().addAll(eLbl, emailField, new Region(), pLbl, passField);
-
-        Button loginBtn = new Button("SIGN IN");
-        loginBtn.setMaxWidth(Double.MAX_VALUE);
-        loginBtn.getStyleClass().add("button-primary");
-        loginBtn.setPrefHeight(50);
-
-        loginBtn.setOnAction(e -> {
-            String email = emailField.getText();
-            String password = passField.getText();
-            try {
-                validateInputs(email, password);
-                User user = new User();
-                user.setEmail(email.trim());
-                UserSession.login(user);
-                initializeDashboard();
-            } catch (EmptyFieldException | InvalidEmailException | WeakPasswordException ex) {
-                showError(ex.getMessage());
-            }
+        httpAuthClient = new HttpAuthClient(httpClient, "http://localhost:8080");
+        
+        LoginView loginView = new LoginView(authService, cryptoAdapter, httpAuthClient, session -> {
+            UserSession.login(session);
+            this.sessionState = session;
+            this.encryptedTaskService = new EncryptedTaskService(
+                documentCryptoService, 
+                sessionState, 
+                httpClient, 
+                "http://localhost:8080"
+            );
+            this.taskService = new TaskService(encryptedTaskService);
+            initializeDashboard();
         });
 
-        loginBox.getChildren().addAll(title, new Label("Manage your tasks efficiently"), fields, loginBtn);
-        mainStack.getChildren().add(loginBox);
+        // Add a "Register" button to the login view logic or a separate toggle
+        Button goToRegister = new Button("Need an account? Register here");
+        goToRegister.setStyle("-fx-background-color: transparent; -fx-text-fill: #4f46e5; -fx-cursor: hand; -fx-padding: 10;");
+        goToRegister.setOnAction(e -> showRegistrationScreen());
+        
+        VBox container = new VBox(10, loginView, goToRegister);
+        container.setAlignment(Pos.CENTER);
+
+        mainStack.getChildren().add(container);
+    }
+
+    private void showRegistrationScreen() {
+        mainStack.getChildren().clear();
+        RegisterView registerView = new RegisterView(authService, cryptoAdapter, httpAuthClient, this::showLoginScreen);
+        mainStack.getChildren().add(registerView);
     }
 
     private void validateInputs(String email, String password) throws EmptyFieldException, InvalidEmailException, WeakPasswordException {
@@ -138,9 +149,15 @@ public class DashboardUI extends Application {
 
     private void initializeDashboard() {
         mainStack.getChildren().clear();
-        String userEmail = UserSession.getCurrentUserEmail();
         
-        taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
+        try {
+            // For now, using a mock teamId "1" to fetch tasks
+            java.util.List<Task> remoteTasks = encryptedTaskService.fetchTasksByTeam("1");
+            taskList = FXCollections.observableArrayList(remoteTasks);
+        } catch (Exception e) {
+            taskList = FXCollections.observableArrayList();
+            showError("Failed to fetch tasks: " + e.getMessage());
+        }
         
         dashboardView = new DashboardView(taskList);
         myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, t -> {
