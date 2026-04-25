@@ -65,29 +65,51 @@ public class DashboardUI extends Application {
 
     private void showLoginScreen() {
         mainStack.getChildren().clear();
+        mainStack.setStyle("-fx-background-color: #f5f6fa;");
         
-        // Instantiate our new pure-layout LoginView
-        ui.views.LoginView loginView = new ui.views.LoginView();
-        
-        // Instantiate the backend components
-        ui.http.HttpAuthClient httpClient = new ui.http.HttpAuthClient("http://localhost:8080");
-        crypto.api.CryptoService cryptoService = new crypto.internal.CryptoServiceImpl();
-        auth.service.CryptoAdapter cryptoAdapter = new auth.service.CryptoAdapter(cryptoService);
-        auth.service.AuthService authService = new auth.service.AuthService(cryptoAdapter);
-        
-        // Create the controller and wire it up
-        ui.controllers.LoginController controller = new ui.controllers.LoginController(
-                loginView, httpClient, cryptoAdapter, authService, () -> {
-            // This Runnable is called on successful login (Phase 2 completion)
-            // We reuse the teammate's session logic to route to the Dashboard
-            User user = new User();
-            user.setEmail(loginView.getEmailField().getText().trim());
-            UserSession.login(user);
-            initializeDashboard();
-        });
-        controller.initialize();
+        VBox loginBox = new VBox(25);
+        loginBox.setAlignment(Pos.CENTER);
+        loginBox.setMaxSize(400, 480);
+        loginBox.setStyle("-fx-background-color: white; -fx-padding: 50; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
 
-        mainStack.getChildren().add(loginView);
+        Label title = new Label("SECURE TASKER");
+        title.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 32px; -fx-font-weight: bold;");
+
+        VBox fields = new VBox(10);
+        Label eLbl = new Label("EMAIL ADDRESS");
+        eLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
+        TextField emailField = new TextField();
+        emailField.setPromptText("Enter your email");
+        emailField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
+        Label pLbl = new Label("PASSWORD");
+        pLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
+        PasswordField passField = new PasswordField();
+        passField.setPromptText("Enter your password");
+        passField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+        fields.getChildren().addAll(eLbl, emailField, new Region(), pLbl, passField);
+
+        Button loginBtn = new Button("SIGN IN");
+        loginBtn.setMaxWidth(Double.MAX_VALUE);
+        loginBtn.getStyleClass().add("button-primary");
+        loginBtn.setPrefHeight(50);
+
+        loginBtn.setOnAction(e -> {
+            String email = emailField.getText();
+            String password = passField.getText();
+            try {
+                validateInputs(email, password);
+                User user = new User();
+                user.setEmail(email.trim());
+                UserSession.login(user);
+                initializeDashboard();
+            } catch (EmptyFieldException | InvalidEmailException | WeakPasswordException ex) {
+                showError(ex.getMessage());
+            }
+        });
+
+        loginBox.getChildren().addAll(title, new Label("Manage your tasks efficiently"), fields, loginBtn);
+        mainStack.getChildren().add(loginBox);
     }
 
     private void validateInputs(String email, String password) throws EmptyFieldException, InvalidEmailException, WeakPasswordException {
