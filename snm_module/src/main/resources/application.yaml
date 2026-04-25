@@ -15,7 +15,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/aegis_metadata}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    password: Mothersister_101
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # Persistence Settings
@@ -26,5 +26,5 @@ spring:
 
 # Security Handshake Configuration
 server:
-  pepper: ${SERVER_PEPPER:change-me-before-deploy}
-  jwt-secret: ${SERVER_JWT_SECRET:change-me-before-deploy}
+  pepper: any_random_string
+  jwt-secret: aegis-jwt-secret-key-must-be-256bit!!

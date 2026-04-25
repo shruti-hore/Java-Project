@@ -44,4 +44,18 @@ public interface CryptoService {
     byte[] unpad(byte[] padded);
 
     String generateFingerprint(byte[] publicKeyA, byte[] publicKeyB);
+
+    /**
+     * Computes a deterministic SHA-256 hash of the user's email.
+     * This is used for the initial server lookup before the user's salt is known.
+     */
+    String computeStableEmailHash(String email);
+
+    String computeEmailHmac(String email, byte[] authSigningKey);
+
+    /**
+     * Computes a deterministic proof of knowledge of the master key.
+     * This is sent to the server for verification.
+     */
+    String computeMasterKeyProof(byte[] masterKey);
 }

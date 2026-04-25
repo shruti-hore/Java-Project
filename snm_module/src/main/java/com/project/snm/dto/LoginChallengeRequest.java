@@ -8,5 +8,5 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class LoginChallengeRequest {
-    private String emailHmac;
+    private String email;
 }

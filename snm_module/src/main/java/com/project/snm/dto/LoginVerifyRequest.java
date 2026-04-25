@@ -8,6 +8,6 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class LoginVerifyRequest {
-    private String emailHmac;
-    private String bcryptHash;
+    private String email;
+    private String authProof;
 }

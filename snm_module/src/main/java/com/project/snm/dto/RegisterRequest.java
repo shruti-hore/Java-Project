@@ -8,7 +8,8 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class RegisterRequest {
-    private String emailHmac;
+    private String email;
+    private String authProof;
     private String bcryptHash;
     private String publicKeyBase64;
     private String vaultBlobBase64;
