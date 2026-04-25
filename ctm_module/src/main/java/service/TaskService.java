@@ -4,46 +4,44 @@ import model.Task;
 
 public class TaskService {
 
-    private MongoService mongo = new MongoService();
     private WorkflowService workflow = new WorkflowService();
 
+    // The direct database path is removed per Part 3 Step 3.
+    // The UI should directly use EncryptedTaskService instead of TaskService for CRUD operations,
+    // as tasks are now encrypted blobs sent via HTTP.
+    
+    @Deprecated
     public List<Task> getAllTasks(String userId, String teamId) {
-        return mongo.getTasks(userId, teamId);
+        throw new UnsupportedOperationException("Legacy database access is removed. Use SyncManager to load tasks.");
     }
 
+    @Deprecated
     public void addTask(Task t) {
-        workflow.applyRules(t);
-        String id = mongo.addTask(t);
-        t.setId(id);
+        throw new UnsupportedOperationException("Legacy database access is removed. Use EncryptedTaskService.");
     }
 
+    @Deprecated
     public void updateTask(Task t) {
-        workflow.applyRules(t);
-        mongo.updateTask(t);
+        throw new UnsupportedOperationException("Legacy database access is removed. Use EncryptedTaskService.");
     }
 
+    @Deprecated
     public void deleteTask(String id) {
-        mongo.deleteTask(id);
+        throw new UnsupportedOperationException("Legacy database access is removed. Use EncryptedTaskService.");
     }
 
+    @Deprecated
     public void markInProgress(Task t) {
-        t.setStatus("IN_PROGRESS");
-        mongo.updateStatus(t.getId(), "IN_PROGRESS");
+        throw new UnsupportedOperationException("Legacy database access is removed. Use EncryptedTaskService.");
     }
 
+    @Deprecated
     public void markDone(Task t) {
-        updateStatus(t, "DONE");
+        throw new UnsupportedOperationException("Legacy database access is removed. Use EncryptedTaskService.");
     }
 
+    @Deprecated
     public void updateStatus(Task t, String status) {
-        t.setStatus(status);
-        if (status.equals("DONE")) {
-            t.setCompleted(true);
-            mongo.updateCompletion(t.getId(), true);
-        } else {
-            t.setCompleted(false);
-            mongo.updateCompletion(t.getId(), false);
-        }
-        mongo.updateStatus(t.getId(), status);
+        throw new UnsupportedOperationException("Legacy database access is removed. Use EncryptedTaskService.");
     }
 }

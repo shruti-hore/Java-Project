@@ -16,12 +16,13 @@
     </properties>
 
     <dependencies>
-        <!-- MongoDB Synchronous Driver -->
         <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-sync</artifactId>
-            <version>5.6.5</version>
+            <groupId>com.zero</groupId>
+            <artifactId>auth-module</artifactId>
+            <version>1.0-SNAPSHOT</version>
         </dependency>
+        
+
 
         <!-- JavaFX Dependencies -->
         <dependency>
