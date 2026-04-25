@@ -7,18 +7,24 @@ import java.util.Map;
 
 public final class SessionState {
     private final String userId;
+    private final String jwt;
     private final byte[] authSigningKey;        // 32 bytes
     private final PrivateKey x25519PrivateKey;
     private final byte[] x25519PublicKeyBytes;  // 32 bytes
     private final Map<String, byte[]> teamKeys; // teamId → 32-byte AES key
 
-    public SessionState(String userId, byte[] authSigningKey,
+    public SessionState(String userId, String jwt, byte[] authSigningKey,
                         PrivateKey x25519PrivateKey, byte[] x25519PublicKeyBytes) {
         this.userId = userId;
+        this.jwt = jwt;
         this.authSigningKey = authSigningKey;
         this.x25519PrivateKey = x25519PrivateKey;
         this.x25519PublicKeyBytes = x25519PublicKeyBytes;
         this.teamKeys = new HashMap<>();
+    }
+
+    public String getJwt() {
+        return jwt;
     }
 
     public String getUserId() {

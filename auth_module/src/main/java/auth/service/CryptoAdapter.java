@@ -83,4 +83,16 @@ public class CryptoAdapter {
     public String generateFingerprint(byte[] publicKeyA, byte[] publicKeyB) {
         return cryptoService.generateFingerprint(publicKeyA, publicKeyB);
     }
+
+    public String computeStableEmailHash(String email) {
+        return cryptoService.computeStableEmailHash(email);
+    }
+
+    public String computeEmailHmac(String email, byte[] authSigningKey) {
+        return cryptoService.computeEmailHmac(email, authSigningKey);
+    }
+
+    public String computeMasterKeyProof(byte[] masterKey) {
+        return cryptoService.computeMasterKeyProof(masterKey);
+    }
 }
