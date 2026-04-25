@@ -11,12 +11,29 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
 import javafx.scene.chart.*;
 import javafx.geometry.Side;
-import model.Task;
+import javafx.scene.control.ProgressIndicator;
+import client.model.Task;
 import ui.components.StatCard;
 import java.time.LocalDate;
 
 public class DashboardView extends BorderPane {
     private ObservableList<Task> taskList;
+
+    private final VBox workspaceListContainer = new VBox(10);
+    private final Button createWorkspaceButton = new Button("+ New");
+    private final Button joinWorkspaceButton = new Button("Join");
+    private final Label syncStatusLabel = new Label();
+    private final ProgressIndicator syncSpinner = new ProgressIndicator();
+    private final Button addTaskButton = new Button("+ Add Task");
+    private final Button viewTasksButton = new Button("View Tasks");
+
+    public VBox getWorkspaceListContainer() { return workspaceListContainer; }
+    public Button getCreateWorkspaceButton() { return createWorkspaceButton; }
+    public Button getJoinWorkspaceButton() { return joinWorkspaceButton; }
+    public Label getSyncStatusLabel() { return syncStatusLabel; }
+    public ProgressIndicator getSyncSpinner() { return syncSpinner; }
+    public Button getAddTaskButton() { return addTaskButton; }
+    public Button getViewTasksButton() { return viewTasksButton; }
 
     public DashboardView(ObservableList<Task> tasks) {
         this.taskList = tasks;
@@ -31,6 +48,7 @@ public class DashboardView extends BorderPane {
         
         centerContent.getChildren().addAll(
             createWelcomeCard(),
+            createWorkspaceSection(),
             createStatsRow(),
             createWorkloadAnalysisSection(),
             createWorkProgressSection()
@@ -68,7 +86,11 @@ public class DashboardView extends BorderPane {
         Button dateSelector = new Button("📅");
         dateSelector.setStyle("-fx-background-color: #f5f6fa; -fx-background-radius: 8; -fx-padding: 8;");
 
-        topBar.getChildren().addAll(title, searchField, spacer, dateLabel, dateSelector);
+        syncSpinner.setPrefSize(14, 14);
+        syncSpinner.setVisible(false);
+        syncStatusLabel.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+
+        topBar.getChildren().addAll(title, searchField, spacer, syncSpinner, syncStatusLabel, dateLabel, dateSelector);
         return topBar;
     }
 
@@ -83,11 +105,53 @@ public class DashboardView extends BorderPane {
         Label sub = new Label("You have " + pending + " tasks remaining. Keep pushing forward!");
         sub.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px;");
         
-        Button learnMore = new Button("View Tasks");
-        learnMore.setStyle("-fx-background-color: white; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25;");
+        viewTasksButton.setStyle("-fx-background-color: white; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25;");
+        addTaskButton.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25; -fx-border-color: white; -fx-border-radius: 10;");
+
+        HBox actions = new HBox(15, viewTasksButton, addTaskButton);
         
-        welcome.getChildren().addAll(title, sub, learnMore);
+        welcome.getChildren().addAll(title, sub, actions);
         return welcome;
+    }
+
+    private VBox createWorkspaceSection() {
+        VBox section = new VBox(15);
+        
+        HBox header = new HBox();
+        header.setAlignment(Pos.CENTER_LEFT);
+        Label title = new Label("Your Workspaces");
+        title.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;");
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        
+        joinWorkspaceButton.setStyle("-fx-background-color: #30363d; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+        createWorkspaceButton.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+        
+        HBox buttons = new HBox(10, joinWorkspaceButton, createWorkspaceButton);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        
+        header.getChildren().addAll(title, spacer, buttons);
+        
+        section.getChildren().addAll(header, workspaceListContainer);
+        return section;
+    }
+
+    public VBox createWorkspaceCard(String name, String ownerUserId, String lastSynced) {
+        VBox card = new VBox(5);
+        card.setStyle("-fx-background-color: #161b22; -fx-background-radius: 12; -fx-border-color: #30363d; -fx-border-width: 1; -fx-padding: 15; -fx-cursor: hand;");
+        
+        Label nameLbl = new Label(name);
+        nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;");
+        
+        Label ownerLbl = new Label("Owner: " + ownerUserId);
+        ownerLbl.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 12px;");
+        
+        Label syncLbl = new Label("Last Synced: " + lastSynced);
+        syncLbl.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
+        
+        card.getChildren().addAll(nameLbl, ownerLbl, syncLbl);
+        return card;
     }
 
     private HBox createStatsRow() {

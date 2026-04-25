@@ -49,6 +49,10 @@ public final class SessionState {
         return key;
     }
 
+    public boolean hasTeamKey(String teamId) {
+        return teamKeys.containsKey(teamId);
+    }
+
     /**
      * Zeros all byte[] fields and clears teamKeys to ensure no key material lingers in heap.
      */

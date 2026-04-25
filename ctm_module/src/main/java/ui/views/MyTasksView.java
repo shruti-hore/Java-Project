@@ -6,7 +6,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.input.*;
-import model.Task;
+import client.model.Task;
 import service.TaskService;
 import ui.components.TaskCard;
 import java.util.function.Consumer;

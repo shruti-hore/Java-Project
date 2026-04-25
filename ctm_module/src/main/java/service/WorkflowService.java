@@ -1,6 +1,6 @@
 package service;
 
-import model.Task;
+import client.model.Task;
 import model.WorkflowRule;
 import java.util.ArrayList;
 import java.util.List;

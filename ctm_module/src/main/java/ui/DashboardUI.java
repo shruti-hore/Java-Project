@@ -18,7 +18,7 @@ import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
 import java.io.File;
 import java.time.LocalDate;
-import model.Task;
+import client.model.Task;
 import model.User;
 import service.TaskService;
 import ui.views.DashboardView;
@@ -36,7 +36,7 @@ public class DashboardUI extends Application {
     private BorderPane mainRoot;
     private TaskService taskService = new TaskService();
     private ObservableList<Task> taskList;
-    
+
     private DashboardView dashboardView;
     private MyTasksView myTasksView;
     private ui.views.CalendarView calendarView;
@@ -55,7 +55,9 @@ public class DashboardUI extends Application {
                     scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
                 }
             }
-        } catch (Exception ex) { ex.printStackTrace(); }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
 
         stage.setScene(scene);
         stage.setTitle("Secure Task Manager");
@@ -68,11 +70,12 @@ public class DashboardUI extends Application {
     private void showLoginScreen() {
         mainStack.getChildren().clear();
         mainStack.setStyle("-fx-background-color: #f5f6fa;");
-        
+
         VBox loginBox = new VBox(25);
         loginBox.setAlignment(Pos.CENTER);
         loginBox.setMaxSize(400, 480);
-        loginBox.setStyle("-fx-background-color: white; -fx-padding: 50; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
+        loginBox.setStyle(
+                "-fx-background-color: white; -fx-padding: 50; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
 
         Label title = new Label("SECURE TASKER");
         title.setStyle("-fx-text-fill: #4f46e5; -fx-font-size: 32px; -fx-font-weight: bold;");
@@ -82,13 +85,15 @@ public class DashboardUI extends Application {
         eLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         TextField emailField = new TextField();
         emailField.setPromptText("Enter your email");
-        emailField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+        emailField.setStyle(
+                "-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
         Label pLbl = new Label("PASSWORD");
         pLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         PasswordField passField = new PasswordField();
         passField.setPromptText("Enter your password");
-        passField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+        passField.setStyle(
+                "-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
         fields.getChildren().addAll(eLbl, emailField, new Region(), pLbl, passField);
 
         Button loginBtn = new Button("SIGN IN");
@@ -114,24 +119,25 @@ public class DashboardUI extends Application {
         mainStack.getChildren().add(loginBox);
     }
 
-    private void validateInputs(String email, String password) throws EmptyFieldException, InvalidEmailException, WeakPasswordException {
+    private void validateInputs(String email, String password)
+            throws EmptyFieldException, InvalidEmailException, WeakPasswordException {
         if (email == null || email.trim().isEmpty()) {
             throw new EmptyFieldException("Email cannot be empty");
         }
         if (password == null || password.isEmpty()) {
             throw new EmptyFieldException("Password cannot be empty");
         }
-        
+
         String trimmedEmail = email.trim();
         String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.com$";
         if (!trimmedEmail.matches(emailRegex)) {
             throw new InvalidEmailException("Enter a valid email address ending in .com");
         }
-        
+
         if (password.length() < 8) {
             throw new WeakPasswordException("Password must be at least 8 characters");
         }
-        
+
         String passRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!]).{8,}$";
         if (!password.matches(passRegex)) {
             throw new WeakPasswordException("Include uppercase, lowercase, number and special character");
@@ -141,9 +147,9 @@ public class DashboardUI extends Application {
     private void initializeDashboard() {
         mainStack.getChildren().clear();
         String userEmail = UserSession.getCurrentUserEmail();
-        
+
         taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
-        
+
         dashboardView = new DashboardView(taskList);
         myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, t -> {
             if (showConfirmation("Delete Task", "Are you sure you want to delete this task?")) {
@@ -153,15 +159,34 @@ public class DashboardUI extends Application {
             }
         });
         calendarView = new ui.views.CalendarView(taskList);
-        
+
         SidebarView sidebar = new SidebarView(viewKey -> {
-            switch(viewKey) {
-                case "DASHBOARD": mainRoot.setCenter(dashboardView); break;
-                case "KANBAN": mainRoot.setCenter(myTasksView); myTasksView.refresh(); break;
-                case "CALENDAR": mainRoot.setCenter(calendarView); calendarView.refresh(); break;
-                case "LOGOUT": UserSession.logout(); showLoginScreen(); break;
-                default: showError("Module coming soon!");
+            switch (viewKey) {
+                case "DASHBOARD":
+                    mainRoot.setCenter(dashboardView);
+                    break;
+                case "KANBAN":
+                    mainRoot.setCenter(myTasksView);
+                    myTasksView.refresh();
+                    break;
+                case "CALENDAR":
+                    mainRoot.setCenter(calendarView);
+                    calendarView.refresh();
+                    break;
+                case "LOGOUT":
+                    UserSession.logout();
+                    showLoginScreen();
+                    break;
+                default:
+                    showError("Module coming soon!");
             }
+        });
+
+        sidebar.getAddTaskBtn().setOnAction(e -> handleEditAction(null));
+        dashboardView.getAddTaskButton().setOnAction(e -> handleEditAction(null));
+        dashboardView.getViewTasksButton().setOnAction(e -> {
+            mainRoot.setCenter(myTasksView);
+            myTasksView.refresh();
         });
 
         mainRoot = new BorderPane();
@@ -172,13 +197,17 @@ public class DashboardUI extends Application {
     }
 
     private void handleEditAction(Task t) {
-        if (t == null) showAddTaskDialog();
-        else showEditDialog(t);
+        if (t == null)
+            showAddTaskDialog();
+        else
+            showEditDialog(t);
     }
 
     private void showAddTaskDialog() {
-        TextField tIn = new TextField(); tIn.setPromptText("Title");
-        TextField dIn = new TextField(); dIn.setPromptText("Description");
+        TextField tIn = new TextField();
+        tIn.setPromptText("Title");
+        TextField dIn = new TextField();
+        dIn.setPromptText("Description");
         DatePicker dateIn = new DatePicker(LocalDate.now());
         dateIn.setDayCellFactory(picker -> new DateCell() {
             @Override
@@ -190,18 +219,26 @@ public class DashboardUI extends Application {
         ComboBox<String> pIn = new ComboBox<>(FXCollections.observableArrayList("High", "Medium", "Low"));
         pIn.setValue("Low");
         pIn.setMaxWidth(Double.MAX_VALUE);
-        
+
         Button save = new Button("Add Task");
-        save.setStyle("-fx-background-color: #238636; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 8;");
+        save.setStyle(
+                "-fx-background-color: #238636; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 8;");
         save.setMaxWidth(Double.MAX_VALUE);
-        
+
         save.setOnAction(e -> {
             String title = tIn.getText();
             String date = dateIn.getValue().toString();
-            if (!ValidationUtils.isValidTaskTitle(title)) { showError("Title cannot be empty!"); return; }
-            if (!ValidationUtils.isFutureOrPresentDate(date)) { showError("Date cannot be in the past!"); return; }
+            if (!ValidationUtils.isValidTaskTitle(title)) {
+                showError("Title cannot be empty!");
+                return;
+            }
+            if (!ValidationUtils.isFutureOrPresentDate(date)) {
+                showError("Date cannot be in the past!");
+                return;
+            }
 
-            Task newTask = new Task(null, title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(), UserSession.getCurrentUserEmail(), null);
+            Task newTask = new Task(null, title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
+                    UserSession.getCurrentUserEmail(), null);
             taskService.addTask(newTask);
             taskList.add(newTask);
             myTasksView.refresh();
@@ -209,7 +246,8 @@ public class DashboardUI extends Application {
         });
 
         VBox layout = new VBox(15, new Label("NEW TASK"), tIn, dIn, dateIn, pIn, save);
-        layout.setStyle("-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
+        layout.setStyle(
+                "-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
         layout.setMaxSize(400, 450);
         showOverlay(layout);
     }
@@ -230,14 +268,21 @@ public class DashboardUI extends Application {
         pIn.setMaxWidth(Double.MAX_VALUE);
 
         Button save = new Button("Save Changes");
-        save.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 8;");
+        save.setStyle(
+                "-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 8;");
         save.setMaxWidth(Double.MAX_VALUE);
-        
+
         save.setOnAction(e -> {
             String title = tIn.getText();
             String date = dateIn.getValue().toString();
-            if (!ValidationUtils.isValidTaskTitle(title)) { showError("Title cannot be empty!"); return; }
-            if (!ValidationUtils.isFutureOrPresentDate(date)) { showError("Date cannot be in the past!"); return; }
+            if (!ValidationUtils.isValidTaskTitle(title)) {
+                showError("Title cannot be empty!");
+                return;
+            }
+            if (!ValidationUtils.isFutureOrPresentDate(date)) {
+                showError("Date cannot be in the past!");
+                return;
+            }
 
             t.setTitle(title);
             t.setDescription(dIn.getText());
@@ -249,7 +294,8 @@ public class DashboardUI extends Application {
         });
 
         VBox layout = new VBox(15, new Label("EDIT TASK"), tIn, dIn, dateIn, pIn, save);
-        layout.setStyle("-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
+        layout.setStyle(
+                "-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
         layout.setMaxSize(400, 450);
         showOverlay(layout);
     }
@@ -288,5 +334,7 @@ public class DashboardUI extends Application {
         return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
-    public static void main(String[] args) { launch(); }
+    public static void main(String[] args) {
+        launch();
+    }
 }

@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 public class SidebarView extends VBox {
     private Consumer<String> onNavigate;
     private Label activeNav;
+    private final Button addTaskBtn;
 
     public SidebarView(Consumer<String> navigateAction) {
         this.onNavigate = navigateAction;
@@ -53,7 +54,7 @@ public class SidebarView extends VBox {
         VBox navBox = new VBox(5, dashboardNav, trackingNav, projectsNav, historyNav, toolsHeader, inboxNav, settingsNav, logoutNav);
         navBox.setPadding(new Insets(0, 15, 0, 15));
 
-        Button addTaskBtn = new Button("+ Add New Task");
+        addTaskBtn = new Button("+ Add New Task");
         addTaskBtn.getStyleClass().add("button-primary");
         addTaskBtn.setMaxWidth(Double.MAX_VALUE);
         VBox.setMargin(addTaskBtn, new Insets(40, 20, 20, 20));
@@ -83,5 +84,8 @@ public class SidebarView extends VBox {
         }
         activeNav = nav;
         activeNav.getStyleClass().add("sidebar-nav-active");
+    }
+    public Button getAddTaskBtn() {
+        return addTaskBtn;
     }
 }

@@ -1,5 +1,5 @@
 import java.util.*;
-import model.Task;
+import client.model.Task;
 
 public class Project {
 

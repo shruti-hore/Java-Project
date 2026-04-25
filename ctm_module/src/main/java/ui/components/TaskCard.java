@@ -6,7 +6,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.input.*;
-import model.Task;
+import client.model.Task;
 import service.TaskService;
 import java.util.function.Consumer;
 
