@@ -1,6 +1,7 @@
 package com.project.snm.controller;
 
-import tools.jackson.core.exc.StreamReadException;
+import lombok.RequiredArgsConstructor;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import com.project.snm.dto.BlobUploadRequest;
 import com.project.snm.dto.ConflictResponse;
@@ -45,7 +46,7 @@ public class DocumentController {
     public ResponseEntity<?> createVersion(
             @PathVariable String documentUuid,
             @RequestBody DocumentVersionSubmission submission
-    ) throws StreamReadException, tools.jackson.core.JacksonException {
+    ) throws JacksonException {
         // 1. Load current DocumentVersion for documentUuid
         List<DocumentVersion> versions = documentVersionRepository.findByDocumentUuidOrderByVersionSeqAsc(documentUuid);
         DocumentVersion current = versions.isEmpty() ? null : versions.get(versions.size() - 1);
@@ -105,7 +106,7 @@ public class DocumentController {
     }
 
     @GetMapping("/{documentUuid}/versions/latest")
-    public ResponseEntity<DocumentVersionResponse> getLatestVersion(@PathVariable String documentUuid) throws tools.jackson.core.JacksonException {
+    public ResponseEntity<DocumentVersionResponse> getLatestVersion(@PathVariable String documentUuid) throws JacksonException {
         List<DocumentVersion> versions = documentVersionRepository.findByDocumentUuidOrderByVersionSeqAsc(documentUuid);
         if (versions.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -123,7 +124,7 @@ public class DocumentController {
                 .map(v -> {
                     try {
                         return mapToResponse(v);
-                    } catch (tools.jackson.core.JacksonException e) {
+                    } catch (JacksonException e) {
                         throw new RuntimeException(e);
                     }
                 })
@@ -133,7 +134,7 @@ public class DocumentController {
     }
 
     @GetMapping("/versions/by-blob/{blobId}")
-    public ResponseEntity<DocumentVersionResponse> getVersionByBlob(@PathVariable String blobId) throws tools.jackson.core.JacksonException {
+    public ResponseEntity<DocumentVersionResponse> getVersionByBlob(@PathVariable String blobId) throws JacksonException {
         DocumentVersion version = documentVersionRepository.findAll().stream()
                 .filter(v -> v.getBlobId().equals(blobId))
                 .findFirst()
@@ -142,10 +143,11 @@ public class DocumentController {
         return ResponseEntity.ok(mapToResponse(version));
     }
 
-    private DocumentVersionResponse mapToResponse(DocumentVersion version) throws tools.jackson.core.JacksonException {
+    private DocumentVersionResponse mapToResponse(DocumentVersion version) throws JacksonException {
         String ciphertext = blobService.getBlob(version.getBlobId()).getEncryptedContent();
         
         return DocumentVersionResponse.builder()
+                .documentUuid(version.getDocumentUuid())
                 .versionSeq(version.getVersionSeq())
                 .ciphertextBase64(ciphertext)
                 .nonceBase64(version.getNonceBase64())

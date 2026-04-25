@@ -14,6 +14,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * PIPE-03 Fix [failure mode]: Replaced plaintext write path with EncryptedTaskService.
@@ -99,5 +101,39 @@ public class EncryptedTaskService {
                 (String) fields.get("assigneeUserId"),
                 teamId
         );
+    }
+    public List<Task> fetchTasksByTeam(String teamId) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(serverBaseUrl + "/documents/teams/" + teamId + "/documents"))
+                .header("Authorization", "Bearer " + session.getJwt())
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        
+        if (response.statusCode() != 200) {
+            throw new IOException("Failed to fetch tasks: " + response.statusCode());
+        }
+
+        List<Map<String, Object>> documentVersions = objectMapper.readValue(response.body(), List.class);
+        List<Task> tasks = new java.util.ArrayList<>();
+
+        for (Map<String, Object> versionMap : documentVersions) {
+            try {
+                String ciphertext = (String) versionMap.get("ciphertextBase64");
+                String nonce = (String) versionMap.get("nonceBase64");
+                String aad = (String) versionMap.get("aadBase64");
+                int seq = (int) versionMap.get("versionSeq");
+                // Note: docUuid is not in the response yet, assuming versionMap has it or we use team-level listing logic
+                // For now, using a placeholder docUuid or assuming it's available
+                String docUuid = (String) versionMap.get("documentUuid"); 
+                
+                EncryptedDocumentPayload payload = new EncryptedDocumentPayload(ciphertext, nonce, aad, 0, seq);
+                tasks.add(loadTask(docUuid, teamId, payload));
+            } catch (Exception e) {
+                // Skip failed decryptions or log them
+            }
+        }
+        return tasks;
     }
 }

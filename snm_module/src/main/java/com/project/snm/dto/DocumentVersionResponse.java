@@ -7,6 +7,7 @@ import java.util.Map;
 @Data
 @Builder
 public class DocumentVersionResponse {
+    private String documentUuid;
     private Long versionSeq;
     private String ciphertextBase64;
     private String nonceBase64;

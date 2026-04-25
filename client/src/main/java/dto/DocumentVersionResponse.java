@@ -7,6 +7,7 @@ import java.util.Map;
  * Replaced Lombok with a standard POJO for compatibility and simplicity.
  */
 public class DocumentVersionResponse {
+    private String documentUuid;
     private Long versionSeq;
     private String ciphertextBase64;
     private String nonceBase64;
@@ -15,7 +16,8 @@ public class DocumentVersionResponse {
 
     public DocumentVersionResponse() {}
 
-    public DocumentVersionResponse(Long versionSeq, String ciphertextBase64, String nonceBase64, String aadBase64, Map<String, Integer> vectorClock) {
+    public DocumentVersionResponse(String documentUuid, Long versionSeq, String ciphertextBase64, String nonceBase64, String aadBase64, Map<String, Integer> vectorClock) {
+        this.documentUuid = documentUuid;
         this.versionSeq = versionSeq;
         this.ciphertextBase64 = ciphertextBase64;
         this.nonceBase64 = nonceBase64;
@@ -23,6 +25,8 @@ public class DocumentVersionResponse {
         this.vectorClock = vectorClock;
     }
 
+    public String getDocumentUuid() { return documentUuid; }
+    public void setDocumentUuid(String documentUuid) { this.documentUuid = documentUuid; }
     public Long getVersionSeq() { return versionSeq; }
     public void setVersionSeq(Long versionSeq) { this.versionSeq = versionSeq; }
     public String getCiphertextBase64() { return ciphertextBase64; }
