@@ -44,9 +44,14 @@ public class DashboardUI extends Application {
         mainStack = new StackPane();
         Scene scene = new Scene(mainStack, 1200, 800);
         try {
-            File cssFile = new File("resources/light_style.css");
-            if (cssFile.exists()) {
-                scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+            java.net.URL cssUrl = getClass().getResource("/light_style.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                File cssFile = new File("src/main/resources/light_style.css");
+                if (cssFile.exists()) {
+                    scene.getStylesheets().add(cssFile.toURI().toURL().toExternalForm());
+                }
             }
         } catch (Exception ex) { ex.printStackTrace(); }
 
