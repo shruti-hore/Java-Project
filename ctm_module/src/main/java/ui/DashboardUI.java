@@ -1,3 +1,5 @@
+// to run : mvn clean javafx:run
+
 package ui;
 
 import javafx.application.Application;
