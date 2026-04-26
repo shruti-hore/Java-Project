@@ -15,12 +15,15 @@ import java.time.Instant;
 public class Team {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     private String teamName;
 
-    private Long createdBy;
+    private String ownerUserId;   // UUID string of the creator (UserRecord.userId)
+
+    @Column(unique = true)
+    private String workspaceCode; // Short invite code for join-by-code
 
     private Instant createdAt;
 }

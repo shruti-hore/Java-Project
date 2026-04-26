@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class CreateDocumentVersionRequest {
-    private Long teamId;
+    private String teamId;
     private String blobId;
-    private Long createdBy;
+    private String createdBy;
     private String vectorClockJson;
 }

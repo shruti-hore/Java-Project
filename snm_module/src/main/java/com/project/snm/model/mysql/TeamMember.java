@@ -8,19 +8,23 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 @Entity
-@Table(name = "team_members")
+@Table(name = "team_members", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"teamId", "userId"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class TeamMember {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
-    private Long teamId;
+    @Column(nullable = false)
+    private String teamId;   // FK → Team.id (UUID string)
 
-    private Long userId;
+    @Column(nullable = false)
+    private String userId;   // FK → UserRecord.userId (UUID string)
 
     private String role;
 

@@ -20,7 +20,7 @@ public class DocumentVersion {
 
     private String documentUuid;
 
-    private Long teamId;
+    private String teamId;   // FK → Team.id (UUID string)
 
     private Long versionSeq;
 
@@ -30,7 +30,7 @@ public class DocumentVersion {
 
     private String aadBase64;
 
-    private Long createdBy;
+    private String createdBy;  // FK → UserRecord.userId (UUID string)
 
     private Instant createdAt;
 
