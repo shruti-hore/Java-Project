@@ -1,90 +1,47 @@
 # Collaborative Task Module (CTM) - Technical Summary
 
-This document provides a detailed overview of the core components, classes, and packages within the Collaborative Task Module.
+The Collaborative Task Module is a secure JavaFX client designed for zero-knowledge project and task management. It integrates with the `auth_module` and `crypto_module` to ensure all data is encrypted before leaving the client.
 
 ---
 
-## 1. Model Layer: `model/`
-The `model` package contains the core data structures used throughout the application.
-
-### Key Classes:
-- **`Task`** (Inherits from `ProjectItem`): The central data model for the application, representing an individual work item.
-  - **Fields**: `title`, `description`, `deadline`, `completed`, `status`, `priority`, `ownerEmail`, `notes`.
-- **`User`**: Represents a system user (email, password, etc.).
-- **`Team`** & **`Project`**: Structural models for grouping users and tasks.
-- **`WorkflowRule`**: Used by the workflow engine to define conditional actions.
+## 1. Model Layer: `client.model/`
+The model package uses String UUIDs for all identifiers to ensure compatibility with the Secure Node (SNM) backend.
+- **`Task`**: Represents a work item with fields for title, status, priority, and encrypted content references.
+- **`Team`**: Represents a collaborative workspace.
+- **`DocumentVersion`**: Tracks the state of a document at a specific point in time, including nonces and AAD for GCM decryption.
 
 ---
 
-## 2. Service Layer: `service/`
-The `service` package handles all database interactions and business logic.
-
-### Key Classes:
-- **`MongoService`**: Handles direct MongoDB operations (`mongodb-driver-sync`).
-  - **Methods**: `addTask()`, `getTasks()`, `deleteTask()`, `updateStatus()`, `updateCompletion()`, `updateTask()` (Now fully implemented).
-- **`TaskService`**: An abstraction layer over `MongoService` (Clean Architecture), which provides the data to the UI layer.
-- **`AuthService`**: Manages user login and registration logic.
-- **`TeamService`**: Handles workspace creation, joining, and retrieval.
-- **`WorkspaceView`**: New view for team selection and management.
+## 2. Service Layer: `service/` & `client.service/`
+Business logic has been transitioned from plaintext storage to an encryption-orchestrated architecture.
+- **`EncryptedTaskService`**: The core data orchestrator. It handles the encryption of task blobs and communication with the SNM backend via HTTP.
+- **`TaskService`**: Provides a high-level API for the UI, wrapping the `EncryptedTaskService`.
+- **`SyncManager`**: Manages the local cache (`LocalCache`) and real-time synchronization with the server using WebSockets and conflict resolution logic.
+- **`TeamService`**: Handles workspace discovery and team-key management.
 
 ---
 
-## 3. Exceptions Layer: `exceptions/`
-Custom exceptions for robust input validation and error handling, particularly during authentication and task creation.
-
-### Key Classes:
-- **`EmptyFieldException`**: Thrown when a required input field is blank.
-- **`InvalidEmailException`**: Thrown when an email doesn't match the required regex pattern.
-- **`WeakPasswordException`**: Thrown when a password fails complexity requirements.
-
----
-
-## 4. Utilities: `utils/`
-Helper classes for shared logic across the application.
-
-### Key Classes:
-- **`ValidationUtils`**: Contains static methods for validating emails (e.g., regex matching), passwords, and task fields (like date validation).
-- **`UserSession`**: Manages the currently logged-in user's state (`getCurrentUserEmail()`, `login()`, `logout()`).
+## 3. UI Layer: `ui/`
+The UI follows a modular view-based architecture with rich aesthetics and responsive layouts.
+- **`DashboardUI`**: The main entry point. Orchestrates the two-phase login flow (Challenge/Verify) and manages the transition between workspace selection and the main application.
+- **`DashboardView`**: Analytics-focused view showing project statistics and team workloads.
+- **`MyTasksView`**: A full Kanban implementation with drag-and-drop task status updates.
+- **`CalendarView`**: Renders tasks chronologically based on deadlines.
+- **`WorkspaceView`**: A selection screen for choosing or creating secure workspaces.
 
 ---
 
-## 5. UI Layer: `ui/`
-The UI is built using a modular view-based JavaFX architecture, separating the Dashboard analytics from the Kanban task management.
-
-### Main Controller: `DashboardUI`
-- **Role**: Entry point, handles authentication, initializes the app, and manages view switching.
-- **Key Features**: Login screen with custom exception validation, and routing to Dashboard, Kanban, and Calendar views.
-
-### Views: `ui/views/`
-- **`LoginView`**: The login interface (managed dynamically or purely via layout).
-- **`SidebarView`**: Static navigation panel for switching between Dashboard, My Tasks, Calendar, and Logout. Now includes a functional "Add New Task" button (hooked in DashboardUI).
-- **`DashboardView`**: Read-only analytics workspace featuring stats cards and analytics charts. Now includes functional "Add Task" and "View Tasks" buttons in the welcome card.
-- **`MyTasksView`**: Interactive Kanban board for task manipulation (Drag & Drop support, filtering).
-- **`CalendarView`**: A view that renders tasks on a calendar layout based on their deadlines.
-
-### Components: `ui/components/`
-- **`StatCard`**: Styled container for displaying key performance metrics.
-- **`TaskCard`**: Modular task representation with context-aware buttons (Edit/Delete) and drag-and-drop capabilities.
+## 4. Security Architecture (Implemented)
+The architectural gaps identified in previous versions have been resolved:
+- **Client-Side Encryption**: All task content is encrypted using AES-256-GCM before transmission.
+- **Zero-Knowledge**: The backend (`snm_module`) only stores opaque blobs and metadata.
+- **Secure Sessions**: Master keys are derived via Argon2id and stored in the ephemeral `SessionState`.
+- **Team Security**: Workspace-specific keys are shared via X25519-encrypted envelopes, ensuring only team members can decrypt content.
 
 ---
 
-## Architectural Gap (Critical)
-
-The current implementation **violates the core project principle**:
-> "Server must be cryptographically blind to all task content"
-
-### Issues:
-- Task data is stored in plaintext in MongoDB
-- No encryption before persistence
-- No decryption layer
-- No separation between UI and storage logic
-- No offline support
-
-### Target Architecture:
-The UI module has been prepared to evolve into an **Encryption-Orchestrating Client**. The modular view structure (Phases 1-4) is now in place, separating the UI from the future cryptographic loading phases (Metadata -> Visible Content -> Background Cache).
-
-**Completed Phases:**
-1. **Login/Register** (Inline validation, toggleable)
-2. **Workspace Selection** (Card-based selection)
-3. **Teams Dashboard** (Sidebar-integrated navigation)
-4. **Team Tasks View** (Kanban with drag-and-drop and workload stats)
+## 5. Build and Execution
+- **Module Path**: `ctm_module`
+- **Build Command**: `mvn clean install`
+- **Run Command**: `mvn javafx:run`
+- **Requirements**: Java 21, JavaFX 21, and a running `snm_module` backend.
