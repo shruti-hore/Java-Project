@@ -53,7 +53,8 @@ public class DashboardView extends BorderPane {
             createTeamHeader(),
             createTeamMembersSection(),
             createStatsRow(),
-            createTimelineSection()
+            createTimelineSection(),
+            createWorkspaceSection()
         );
 
         ScrollPane scrollPane = new ScrollPane(centerContent);

@@ -102,4 +102,37 @@ public class CryptoServiceImpl implements CryptoService {
     public String generateFingerprint(byte[] publicKeyA, byte[] publicKeyB) {
         return fingerprintService.generate(publicKeyA, publicKeyB);
     }
+
+    @Override
+    public String computeStableEmailHash(String email) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(email.toLowerCase().trim().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.Base64.getEncoder().encodeToString(hash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public String computeEmailHmac(String email, byte[] authSigningKey) {
+        org.bouncycastle.crypto.macs.HMac hmac = new org.bouncycastle.crypto.macs.HMac(new org.bouncycastle.crypto.digests.SHA256Digest());
+        hmac.init(new org.bouncycastle.crypto.params.KeyParameter(authSigningKey));
+        byte[] emailBytes = email.toLowerCase().trim().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        hmac.update(emailBytes, 0, emailBytes.length);
+        byte[] result = new byte[hmac.getMacSize()];
+        hmac.doFinal(result, 0);
+        return java.util.Base64.getEncoder().encodeToString(result);
+    }
+
+    @Override
+    public String computeMasterKeyProof(byte[] masterKey) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(masterKey);
+            return java.util.Base64.getEncoder().encodeToString(hash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

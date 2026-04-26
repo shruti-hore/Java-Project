@@ -65,7 +65,7 @@ public class AuthService {
     }
 
     public SessionState login(String email, char[] password, byte[] salt,
-                              byte[] vaultBlob, byte[] publicKeyBytes)
+                              byte[] vaultBlob, byte[] publicKeyBytes, String jwt)
             throws AEADBadTagException {
         
         byte[] masterKey = null;
@@ -92,7 +92,7 @@ public class AuthService {
             privateKey = cryptoAdapter.loadPrivateKey(privateKeyBytes);
 
             // Step 6: Create SessionState
-            return new SessionState(email, authKey, privateKey, publicKeyBytes);
+            return new SessionState(email, jwt, authKey, privateKey, publicKeyBytes);
 
         } finally {
             // Step 7: Zero sensitive material
