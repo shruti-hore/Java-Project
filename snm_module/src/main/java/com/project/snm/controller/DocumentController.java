@@ -7,9 +7,7 @@ import com.project.snm.dto.ConflictResponse;
 import com.project.snm.dto.DocumentVersionResponse;
 import com.project.snm.dto.DocumentVersionSubmission;
 import com.project.snm.model.mysql.DocumentVersion;
-import com.project.snm.model.mysql.UserRecord;
 import com.project.snm.repository.DocumentVersionRepository;
-import com.project.snm.repository.UserRepository;
 import com.project.snm.service.BlobService;
 import com.project.snm.websocket.SyncNotificationService;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +35,6 @@ public class DocumentController {
     private final DocumentVersionRepository documentVersionRepository;
     private final BlobService blobService;
     private final SyncNotificationService syncNotificationService;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/{documentUuid}/versions")
@@ -71,14 +68,12 @@ public class DocumentController {
         blobReq.setEncryptedContent(submission.getCiphertextBase64());
         String blobRef = blobService.saveBlob(blobReq).getId();
 
-        // 4. Update vector clock
-        String userEmailHmac = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserRecord user = userRepository.findByEmailHmac(userEmailHmac)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        // 4. Update vector clock — principal name is userId (UUID string)
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         
         Map<String, Integer> clock = submission.getVectorClock();
         if (clock == null) clock = new HashMap<>();
-        clock.put(user.getUserId(), clock.getOrDefault(user.getUserId(), 0) + 1);
+        clock.put(userId, clock.getOrDefault(userId, 0) + 1);
 
         // 5. Create new DocumentVersion in MySQL
         DocumentVersion newVersion = new DocumentVersion();
@@ -89,7 +84,7 @@ public class DocumentController {
         newVersion.setNonceBase64(submission.getNonceBase64());
         newVersion.setAadBase64(submission.getAadBase64());
         newVersion.setVectorClockJson(objectMapper.writeValueAsString(clock));
-        newVersion.setCreatedBy(user.getUserId() == null ? null : Long.parseLong("0")); // userId is UUID, createdBy is Long — using 0 as placeholder until schema aligns
+        newVersion.setCreatedBy(userId);
         newVersion.setCreatedAt(Instant.now());
 
         DocumentVersion saved = documentVersionRepository.save(newVersion);
@@ -116,7 +111,7 @@ public class DocumentController {
     }
 
     @GetMapping("/teams/{teamId}/documents")
-    public ResponseEntity<List<DocumentVersionResponse>> getTeamDocuments(@PathVariable Long teamId) {
+    public ResponseEntity<List<DocumentVersionResponse>> getTeamDocuments(@PathVariable String teamId) {
         List<DocumentVersion> latests = documentVersionRepository.findLatestVersionsByTeamId(teamId);
         
         List<DocumentVersionResponse> responses = latests.stream()

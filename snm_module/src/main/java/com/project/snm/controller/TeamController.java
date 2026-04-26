@@ -1,9 +1,9 @@
 package com.project.snm.controller;
 
-import com.project.snm.dto.CreateTeamRequest;
 import com.project.snm.model.mysql.Team;
 import com.project.snm.service.TeamService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -17,13 +17,16 @@ public class TeamController {
         this.teamService = teamService;
     }
 
-    @PostMapping
-    public Team createTeam(@RequestBody CreateTeamRequest request) {
-        return teamService.createTeam(request);
-    }
-
     @GetMapping
     public List<Team> getAllTeams() {
         return teamService.getAllTeams();
+    }
+
+    /** Returns the workspace invite code for a given teamId. */
+    @GetMapping("/{teamId}/code")
+    public ResponseEntity<java.util.Map<String, String>> getWorkspaceCode(@PathVariable String teamId) {
+        return teamService.getTeamById(teamId)
+                .map(t -> ResponseEntity.ok(java.util.Map.of("code", t.getWorkspaceCode() != null ? t.getWorkspaceCode() : "")))
+                .orElse(ResponseEntity.notFound().build());
     }
 }
