@@ -26,12 +26,9 @@ import java.nio.file.Paths;
 
 import javafx.concurrent.Task;
 import javafx.application.Platform;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 
 import exceptions.*;
 import service.TaskService;
-import service.AuthService;
 import service.TeamService;
 import ui.views.DashboardView;
 import ui.views.MyTasksView;
@@ -411,9 +408,7 @@ public class DashboardUI extends Application {
         }
     }
 
-    private void initializeDashboard() {
-        initializeMainApp(null);
-    }
+
 
     private void showWorkspaceSelection() {
         if (sessionState == null) return;
