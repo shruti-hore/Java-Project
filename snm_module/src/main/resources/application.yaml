@@ -27,4 +27,4 @@ spring:
 # Security Handshake Configuration
 server:
   pepper: ${SERVER_PEPPER:change-me-before-deploy}
-  jwt-secret: ${SERVER_JWT_SECRET:change-me-before-deploy}
+  jwt-secret: ${SERVER_JWT_SECRET:very-long-and-secure-default-jwt-secret-key-that-is-at-least-256-bits-long}

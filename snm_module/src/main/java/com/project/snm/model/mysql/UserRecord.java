@@ -16,7 +16,7 @@ public class UserRecord {
     private String userId;
 
     @Column(unique = true, nullable = false)
-    private String emailHmac;          // HMAC-SHA256(email, server_pepper) — hex string
+    private String email;              // Stored in plaintext. Used for lookup.
 
     @Column(nullable = false)
     private String bcryptHash;

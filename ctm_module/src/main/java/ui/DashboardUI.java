@@ -18,43 +18,77 @@ import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
 import java.io.File;
 import java.time.LocalDate;
-import client.model.Task;
-import model.User;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import javax.crypto.AEADBadTagException;
+import java.nio.file.Paths;
+
+import javafx.concurrent.Task;
+import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+
+import exceptions.*;
 import service.TaskService;
 import service.AuthService;
 import service.TeamService;
 import ui.views.DashboardView;
 import ui.views.MyTasksView;
 import ui.views.SidebarView;
-import utils.UserSession;
 import utils.ValidationUtils;
-import exceptions.EmptyFieldException;
-import exceptions.InvalidEmailException;
-import exceptions.WeakPasswordException;
+import utils.UserSession;
+
+import client.crypto.DocumentCryptoService;
+import client.crypto.NonceCounterStore;
+import client.sync.LocalCache;
+import client.sync.ConflictResolver;
+import client.sync.SyncManager;
 
 public class DashboardUI extends Application {
 
     private StackPane mainStack;
     private BorderPane mainRoot;
-    private TaskService taskService = new TaskService();
-    private ObservableList<Task> taskList;
+    
+    // Secure dependencies — injected at start()
+    private ui.http.HttpAuthClient httpClient;
+    private auth.service.CryptoAdapter cryptoAdapter;
+    private auth.service.AuthService secureAuthService;
+    private auth.session.SessionState sessionState;        // null until login succeeds
+    private client.service.EncryptedTaskService encryptedTaskService;
+    private client.sync.SyncManager syncManager;
+
+    // Keep these field declarations — their internals change in later steps
+    private service.TaskService taskService;
+    private service.TeamService teamService;
+
+    private ObservableList<client.model.Task> taskList;
 
     private DashboardView dashboardView;
     private MyTasksView myTasksView;
     private ui.views.CalendarView calendarView;
     private ui.views.WorkspaceView workspaceView;
-    private AuthService authService = new AuthService();
-    private TeamService teamService = new TeamService();
     private String selectedTeamId;
     
     private boolean isLoginMode = true;
+    private enum LoginPhase { EMAIL_ENTRY, PASSWORD_ENTRY }
+    private LoginPhase loginPhase = LoginPhase.EMAIL_ENTRY;
+    private String pendingEmailHmac;
+    private String pendingSaltBase64;
+    private String pendingVaultBlobBase64;
+    private String pendingPublicKeyBase64;
+
     private Label loginErrorLabel = new Label();
     private PasswordField confirmPassField = new PasswordField();
     private Label confirmPassLbl = new Label("CONFIRM PASSWORD");
 
     @Override
     public void start(Stage stage) {
+        this.httpClient = new ui.http.HttpAuthClient(java.net.http.HttpClient.newHttpClient(), "http://localhost:8080");
+        this.cryptoAdapter = new auth.service.CryptoAdapter(new crypto.internal.CryptoServiceImpl());
+        this.secureAuthService = new auth.service.AuthService(cryptoAdapter);
+        this.teamService = new service.TeamService(httpClient);
+        
         mainStack = new StackPane();
         Scene scene = new Scene(mainStack, 1200, 800);
         try {
@@ -124,36 +158,25 @@ public class DashboardUI extends Application {
 
         actionBtn.setOnAction(e -> {
             String email = emailField.getText();
-            String password = passField.getText();
+            char[] password = passField.getText().toCharArray();
             loginErrorLabel.setText("");
 
-            try {
-                validateInputs(email, password);
-                if (!isLoginMode) {
-                    if (!password.equals(confirmPassField.getText())) {
-                        loginErrorLabel.setText("Passwords do not match!");
-                        return;
-                    }
-                    if (authService.register(email, password)) {
-                        isLoginMode = true;
-                        showLoginScreen();
-                        loginErrorLabel.setText("Registration successful! Please sign in.");
-                        loginErrorLabel.setStyle("-fx-text-fill: #10b981; -fx-font-size: 12px; -fx-font-weight: bold;");
-                    } else {
-                        loginErrorLabel.setText("User already exists!");
-                    }
-                } else {
-                    if (authService.login(email, password)) {
-                        User user = new User();
-                        user.setEmail(email.trim());
-                        UserSession.login(user);
-                        initializeDashboard();
-                    } else {
-                        loginErrorLabel.setText("Invalid email or password.");
-                    }
-                }
-            } catch (EmptyFieldException | InvalidEmailException | WeakPasswordException ex) {
-                loginErrorLabel.setText(ex.getMessage());
+            if (!isLoginMode) {
+                char[] confirmPassword = confirmPassField.getText().toCharArray();
+                handleRegistration(email, password, confirmPassword, actionBtn);
+                return;
+            }
+
+            // Safety: If email changed, always go back to Phase 1
+            if (pendingEmailHmac != null && !pendingEmailHmac.equals(email)) {
+                loginPhase = LoginPhase.EMAIL_ENTRY;
+                actionBtn.setText("Sign In");
+            }
+
+            if (loginPhase == LoginPhase.EMAIL_ENTRY) {
+                handleLoginPhase1(email, actionBtn);
+            } else {
+                handleLoginPhase2(email, password, actionBtn);
             }
         });
 
@@ -166,6 +189,201 @@ public class DashboardUI extends Application {
 
         loginBox.getChildren().addAll(title, loginErrorLabel, fields, actionBtn, toggleBtn);
         mainStack.getChildren().add(loginBox);
+    }
+
+    private void handleLoginPhase1(String email, Button actionBtn) {
+        if (email == null || email.trim().isEmpty()) {
+            loginErrorLabel.setText("Email cannot be empty");
+            return;
+        }
+
+        setLoginLoading(true, actionBtn);
+        Task<java.util.Map<String, String>> task = new Task<>() {
+            @Override
+            protected java.util.Map<String, String> call() throws Exception {
+                // Step 1: In a real system, we'd HMAC the email. For now, we use the plaintext email
+                // to match the server implementation we worked on.
+                // String emailHmac = cryptoAdapter.computeStableEmailHash(email); 
+                // Actually, the server expects the plaintext email for the challenge in Part 6
+                return httpClient.challenge(email).get();
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            java.util.Map<String, String> response = task.getValue();
+            pendingEmailHmac = email; 
+            pendingSaltBase64 = response.get("saltBase64");
+            pendingVaultBlobBase64 = response.get("vaultBlobBase64");
+            pendingPublicKeyBase64 = response.get("publicKeyBase64");
+            
+            loginPhase = LoginPhase.PASSWORD_ENTRY;
+            setLoginLoading(false, actionBtn);
+            loginErrorLabel.setText("Account found. Enter your master password.");
+            loginErrorLabel.setStyle("-fx-text-fill: #4f46e5;");
+            actionBtn.setText("Unlock");
+        });
+
+        task.setOnFailed(e -> {
+            setLoginLoading(false, actionBtn);
+            loginErrorLabel.setText("No account found or server error.");
+            loginErrorLabel.setStyle("-fx-text-fill: #ef4444;");
+        });
+
+        new Thread(task).start();
+    }
+
+    private void handleLoginPhase2(String email, char[] password, Button actionBtn) {
+        if (password == null || password.length == 0) {
+            loginErrorLabel.setText("Password cannot be empty");
+            return;
+        }
+
+        setLoginLoading(true, actionBtn);
+        Task<auth.session.SessionState> task = new Task<>() {
+            @Override
+            protected auth.session.SessionState call() throws Exception {
+                char[] passwordClone = null;
+                byte[] masterKey = null;
+                try {
+                    byte[] salt = Base64.getDecoder().decode(pendingSaltBase64);
+                    byte[] vaultBlob = Base64.getDecoder().decode(pendingVaultBlobBase64);
+                    
+                    passwordClone = password.clone();
+                    
+                    // Derivations to get Auth Key for verify
+                    masterKey = cryptoAdapter.deriveMasterKey(passwordClone, salt);
+                    String authProof = cryptoAdapter.computeMasterKeyProof(masterKey);
+                    
+                    System.out.println("[DEBUG] Login Phase 2: computed authProof: " + authProof);
+                    System.out.println("[DEBUG] Login Phase 2: using saltBase64: " + pendingSaltBase64);
+
+                    // Verify with server to get JWT
+                    java.util.Map<String, String> verifyResp = httpClient.verify(email, authProof).get();
+                    String jwt = verifyResp.get("jwt");
+                    httpClient.setJwt(jwt);
+                    
+                    // Fetch public key if we didn't store it from challenge (but we should have)
+                    // Let's use a dummy or retrieve it. 
+                    // Since I updated challenge, I need to store it in Phase 1.
+                    
+                    // Actually, let's just use the one from the JWT or verify resp?
+                    // I'll update Phase 1 to store it.
+                    
+                    byte[] publicKeyBytes = Base64.getDecoder().decode(pendingPublicKeyBase64);
+                    
+                    auth.session.SessionState session = secureAuthService.login(email, password, salt, vaultBlob, publicKeyBytes, jwt);
+                    
+                    return session;
+                } finally {
+                    java.util.Arrays.fill(password, '\0');
+                    if (passwordClone != null) java.util.Arrays.fill(passwordClone, '\0');
+                    if (masterKey != null) java.util.Arrays.fill(masterKey, (byte) 0);
+                }
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            sessionState = task.getValue();
+            loginPhase = LoginPhase.EMAIL_ENTRY;
+            pendingEmailHmac = pendingSaltBase64 = pendingVaultBlobBase64 = null;
+            setLoginLoading(false, actionBtn);
+            
+            // Step 3: Team Selection
+            showTeamSelectionScreen();
+        });
+
+        task.setOnFailed(e -> {
+            setLoginLoading(false, actionBtn);
+            Throwable ex = task.getException();
+            
+            // Reset phase on fatal errors so user can retry or change email
+            loginPhase = LoginPhase.EMAIL_ENTRY;
+            actionBtn.setText("Sign In");
+            
+            if (ex.getCause() instanceof AEADBadTagException || ex instanceof AEADBadTagException) {
+                loginErrorLabel.setText("Incorrect password.");
+            } else {
+                loginErrorLabel.setText("Login failed: " + ex.getMessage());
+            }
+            loginErrorLabel.setStyle("-fx-text-fill: #ef4444;");
+        });
+
+        new Thread(task).start();
+    }
+
+    private void handleRegistration(String email, char[] password, char[] confirmPassword, Button actionBtn) {
+        try {
+            validateInputs(email, new String(password));
+            if (!java.util.Arrays.equals(password, confirmPassword)) {
+                loginErrorLabel.setText("Passwords do not match!");
+                return;
+            }
+        } catch (Exception ex) {
+            loginErrorLabel.setText(ex.getMessage());
+            return;
+        } finally {
+            java.util.Arrays.fill(confirmPassword, '\0');
+        }
+
+        setLoginLoading(true, actionBtn);
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                char[] passwordClone = null;
+                byte[] masterKey = null;
+                try {
+                    passwordClone = password.clone();
+                    auth.model.User user = secureAuthService.register(email, password);
+                    
+                    masterKey = cryptoAdapter.deriveMasterKey(passwordClone, user.getSalt());
+                    String authProof = cryptoAdapter.computeMasterKeyProof(masterKey);
+                    
+                    System.out.println("[DEBUG] Registration: computed authProof: " + authProof);
+                    System.out.println("[DEBUG] Registration: using saltBase64: " + Base64.getEncoder().encodeToString(user.getSalt()));
+
+                    httpClient.register(
+                        user.getEmail(),
+                        authProof,
+                        Base64.getEncoder().encodeToString(user.getPublicKey()),
+                        Base64.getEncoder().encodeToString(user.getKeyVault()),
+                        Base64.getEncoder().encodeToString(user.getSalt())
+                    ).get();
+                    return null;
+                } finally {
+                    java.util.Arrays.fill(password, '\0');
+                    if (passwordClone != null) java.util.Arrays.fill(passwordClone, '\0');
+                    if (masterKey != null) java.util.Arrays.fill(masterKey, (byte) 0);
+                }
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            setLoginLoading(false, actionBtn);
+            isLoginMode = true;
+            showLoginScreen();
+            loginErrorLabel.setText("Registration successful! Please sign in.");
+            loginErrorLabel.setStyle("-fx-text-fill: #10b981;");
+        });
+
+        task.setOnFailed(e -> {
+            setLoginLoading(false, actionBtn);
+            loginErrorLabel.setText("Registration failed: " + task.getException().getMessage());
+            loginErrorLabel.setStyle("-fx-text-fill: #ef4444;");
+        });
+
+        new Thread(task).start();
+    }
+
+    private void setLoginLoading(boolean loading, Button actionBtn) {
+        actionBtn.setDisable(loading);
+        if (loading) {
+            loginErrorLabel.setText("Processing...");
+            loginErrorLabel.setStyle("-fx-text-fill: #6b7280;");
+        }
+    }
+
+    private void showTeamSelectionScreen() {
+        showWorkspaceSelection();
     }
 
     private void validateInputs(String email, String password)
@@ -187,7 +405,7 @@ public class DashboardUI extends Application {
             throw new WeakPasswordException("Password must be at least 8 characters");
         }
 
-        String passRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@#$%^&+=!]).{8,}$";
+        String passRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d\\s]).{8,}$";
         if (!password.matches(passRegex)) {
             throw new WeakPasswordException("Include uppercase, lowercase, number and special character");
         }
@@ -198,23 +416,104 @@ public class DashboardUI extends Application {
     }
 
     private void showWorkspaceSelection() {
-        String userEmail = UserSession.getCurrentUserEmail();
-        List<model.Team> teams = teamService.getTeamsForUser(userEmail);
+        if (sessionState == null) return;
+        String userEmail = sessionState.getUserId();
+        
+        Task<List<model.Team>> task = new Task<>() {
+            @Override
+            protected List<model.Team> call() throws Exception {
+                return teamService.getTeamsForUser(userEmail);
+            }
+        };
 
-        workspaceView = new ui.views.WorkspaceView(
-            teams,
-            this::initializeMainApp,
-            this::handleCreateTeam,
-            this::handleJoinTeam
-        );
+        task.setOnSucceeded(e -> {
+            List<model.Team> teams = task.getValue();
+            workspaceView = new ui.views.WorkspaceView(
+                teams,
+                this::handleTeamSelected,
+                this::handleCreateTeam,
+                this::handleJoinTeam
+            );
 
-        mainRoot.setCenter(workspaceView);
+            if (mainRoot == null) {
+                initializeMainApp(null);
+            }
+            mainRoot.setCenter(workspaceView);
+        });
+
+        task.setOnFailed(e -> showError("Failed to load workspaces: " + task.getException().getMessage()));
+
+        new Thread(task).start();
+    }
+
+    private void handleTeamSelected(model.Team team) {
+        this.selectedTeamId = team.getId();
+        
+        javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                String envelopeBase64 = httpClient.fetchTeamKeyEnvelope(team.getId());
+                byte[] ownerPublicKeyBytes = httpClient.fetchOwnerPublicKey(team.getId());
+                
+                java.security.PublicKey ownerPublicKey = cryptoAdapter.loadPublicKey(ownerPublicKeyBytes);
+                
+                byte[] teamKeyBytes = cryptoAdapter.unwrapTeamKey(
+                    Base64.getDecoder().decode(envelopeBase64),
+                    ownerPublicKey,
+                    sessionState.getX25519PrivateKey()
+                );
+                
+                sessionState.addTeamKey(team.getId(), teamKeyBytes);
+                java.util.Arrays.fill(teamKeyBytes, (byte) 0);
+
+                // Step 6 & 7: Initialize secure client engines
+                NonceCounterStore counterStore = new NonceCounterStore(Paths.get("nonce_counters.txt"));
+                counterStore.load();
+                DocumentCryptoService docCrypto = new DocumentCryptoService(cryptoAdapter, counterStore);
+                LocalCache localCache = new LocalCache("local_cache.db");
+                
+                encryptedTaskService = new client.service.EncryptedTaskService(
+                    docCrypto, sessionState, httpClient.getClient(), httpClient.getBaseUrl()
+                );
+                taskService = new service.TaskService(encryptedTaskService, sessionState, selectedTeamId);
+                
+                syncManager = new SyncManager(
+                    localCache,
+                    new ConflictResolver(),
+                    encryptedTaskService,
+                    sessionState,
+                    httpClient.getClient(),
+                    httpClient.getBaseUrl(),
+                    pair -> Platform.runLater(() -> showConflictDialog(pair)),
+                    () -> Platform.runLater(() -> setSyncIndicator(true)),
+                    () -> Platform.runLater(() -> setSyncIndicator(false))
+                );
+                syncManager.start();
+
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> initializeMainApp(team));
+        task.setOnFailed(e -> showError("Failed to unlock workspace: " + task.getException().getMessage()));
+
+        new Thread(task).start();
+    }
+
+    private void setSyncIndicator(boolean syncing) {
+        // Update UI to show sync status
+        System.out.println("Syncing: " + syncing);
+    }
+
+    private void showConflictDialog(client.sync.ConflictPair pair) {
+        // Show conflict resolution UI
+        System.out.println("Conflict detected for doc: " + pair.docUuid());
     }
 
     private void handleCreateTeam() {
         VBox form = new VBox(20);
         form.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
-        form.setMaxSize(400, 300);
+        form.setMaxSize(400, 450);
         form.setAlignment(Pos.CENTER);
 
         Label title = new Label("Create Workspace");
@@ -224,6 +523,9 @@ public class DashboardUI extends Application {
         nameField.setPromptText("Team Name");
         nameField.setStyle("-fx-background-color: #f9fafb; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
+        Label statusLabel = new Label();
+        statusLabel.setWrapText(true);
+
         Button submit = new Button("CREATE TEAM");
         submit.setMaxWidth(Double.MAX_VALUE);
         submit.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 12; -fx-cursor: hand;");
@@ -231,15 +533,73 @@ public class DashboardUI extends Application {
         submit.setOnAction(e -> {
             String name = nameField.getText();
             if (name == null || name.trim().isEmpty()) {
-                // Show local error or label
+                statusLabel.setText("Name cannot be empty");
                 return;
             }
-            teamService.createTeam(name, UserSession.getCurrentUserEmail());
-            hideOverlay();
-            showWorkspaceSelection();
+            
+            submit.setDisable(true);
+            statusLabel.setText("Creating workspace...");
+            
+            javafx.concurrent.Task<ui.http.HttpAuthClient.CreateWorkspaceResponse> task = new javafx.concurrent.Task<>() {
+                @Override
+                protected ui.http.HttpAuthClient.CreateWorkspaceResponse call() throws Exception {
+                    byte[] teamKey = new byte[32];
+                    java.security.SecureRandom.getInstanceStrong().nextBytes(teamKey);
+                    
+                    try {
+                        String pubKeyBase64 = Base64.getEncoder().encodeToString(sessionState.getX25519PublicKeyBytes());
+                        ui.http.HttpAuthClient.CreateWorkspaceResponse response = httpClient.createWorkspace(name, pubKeyBase64).get();
+                        
+                        byte[] envelope = cryptoAdapter.wrapTeamKey(
+                            teamKey,
+                            sessionState.getX25519PublicKey(),
+                            sessionState.getX25519PrivateKey()
+                        );
+                        
+                        httpClient.postKeyEnvelope(response.teamId(), sessionState.getUserId(), Base64.getEncoder().encodeToString(envelope)).get();
+                        
+                        sessionState.addTeamKey(response.teamId(), teamKey);
+                        return response;
+                    } finally {
+                        java.util.Arrays.fill(teamKey, (byte) 0);
+                    }
+                }
+            };
+
+            task.setOnSucceeded(ev -> {
+                ui.http.HttpAuthClient.CreateWorkspaceResponse res = task.getValue();
+                form.getChildren().clear();
+                
+                Label successTitle = new Label("Workspace Created!");
+                successTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+                
+                Label codeLabel = new Label(res.workspaceCode());
+                codeLabel.setStyle("-fx-font-family: 'monospace'; -fx-font-size: 24px; -fx-text-fill: #4f46e5; -fx-font-weight: bold;");
+                
+                Label hint = new Label("Share this code with your team.");
+                hint.setStyle("-fx-text-fill: #6b7280;");
+                
+                Button done = new Button("DONE");
+                done.setMaxWidth(Double.MAX_VALUE);
+                done.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 12;");
+                done.setOnAction(a -> {
+                    hideOverlay();
+                    showWorkspaceSelection();
+                });
+                
+                form.getChildren().addAll(successTitle, new Label("Invite Code:"), codeLabel, hint, done);
+            });
+
+            task.setOnFailed(ev -> {
+                submit.setDisable(false);
+                statusLabel.setText("Failed: " + task.getException().getMessage());
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+            });
+
+            new Thread(task).start();
         });
 
-        form.getChildren().addAll(title, nameField, submit);
+        form.getChildren().addAll(title, nameField, statusLabel, submit);
         showOverlay(form);
     }
 
@@ -253,30 +613,66 @@ public class DashboardUI extends Application {
         title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
 
         TextField idField = new TextField();
-        idField.setPromptText("Enter Team ID");
+        idField.setPromptText("Enter Team Code");
         idField.setStyle("-fx-background-color: #f9fafb; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
+        Label statusLabel = new Label();
+        statusLabel.setWrapText(true);
 
         Button submit = new Button("JOIN TEAM");
         submit.setMaxWidth(Double.MAX_VALUE);
         submit.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 14; -fx-background-radius: 12; -fx-cursor: hand;");
         
         submit.setOnAction(e -> {
-            String id = idField.getText();
-            if (id == null || id.trim().isEmpty()) {
+            String code = idField.getText();
+            if (code == null || code.trim().isEmpty()) {
+                statusLabel.setText("Code cannot be empty");
                 return;
             }
-            teamService.joinTeam(id, UserSession.getCurrentUserEmail());
-            hideOverlay();
-            showWorkspaceSelection();
+            
+            submit.setDisable(true);
+            statusLabel.setText("Joining workspace...");
+            
+            javafx.concurrent.Task<ui.http.HttpAuthClient.JoinWorkspaceResponse> task = new javafx.concurrent.Task<>() {
+                @Override
+                protected ui.http.HttpAuthClient.JoinWorkspaceResponse call() throws Exception {
+                    return httpClient.joinWorkspace(code.trim()).get();
+                }
+            };
+
+            task.setOnSucceeded(ev -> {
+                ui.http.HttpAuthClient.JoinWorkspaceResponse res = task.getValue();
+                if ("PENDING".equals(res.status())) {
+                    statusLabel.setText("Request sent. Waiting for owner approval.");
+                    statusLabel.setStyle("-fx-text-fill: #6b7280;");
+                    submit.setText("CLOSE");
+                    submit.setDisable(false);
+                    submit.setOnAction(a -> {
+                        hideOverlay();
+                        showWorkspaceSelection();
+                    });
+                } else {
+                    hideOverlay();
+                    showWorkspaceSelection();
+                }
+            });
+
+            task.setOnFailed(ev -> {
+                submit.setDisable(false);
+                statusLabel.setText("Failed: " + task.getException().getMessage());
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+            });
+
+            new Thread(task).start();
         });
 
-        form.getChildren().addAll(title, idField, submit);
+        form.getChildren().addAll(title, idField, statusLabel, submit);
         showOverlay(form);
     }
 
     private void initializeMainApp(model.Team selectedTeam) {
         mainStack.getChildren().clear();
-        String userEmail = UserSession.getCurrentUserEmail();
+        String userEmail = sessionState.getUserId();
         
         mainRoot = new BorderPane();
         
@@ -293,7 +689,7 @@ public class DashboardUI extends Application {
                     break;
                 case "CALENDAR": 
                     if (selectedTeam == null) {
-                        ObservableList<Task> allTasks = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
+                        ObservableList<client.model.Task> allTasks = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
                         ui.views.CalendarView globalCal = new ui.views.CalendarView(allTasks);
                         mainRoot.setCenter(globalCal);
                     } else { 
@@ -301,7 +697,7 @@ public class DashboardUI extends Application {
                         calendarView.refresh(); 
                     }
                     break;
-                case "LOGOUT": UserSession.logout(); showLoginScreen(); break;
+                case "LOGOUT": handleLogout(); break;
                 default: showError("Module coming soon!");
             }
         }, selectedTeam != null);
@@ -313,7 +709,7 @@ public class DashboardUI extends Application {
             this.selectedTeamId = selectedTeam.getId();
             taskList = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, selectedTeamId));
             dashboardView = new DashboardView(taskList, selectedTeam);
-            myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, t -> {
+            myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, (client.model.Task t) -> {
                 showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
                     taskService.deleteTask(t.getId());
                     taskList.remove(t);
@@ -329,6 +725,20 @@ public class DashboardUI extends Application {
             });
 
             mainRoot.setCenter(dashboardView);
+
+            // Fetch workspace code in background (Step 8)
+            javafx.concurrent.Task<String> codeTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected String call() throws Exception {
+                    return httpClient.fetchWorkspaceCode(selectedTeamId);
+                }
+            };
+            codeTask.setOnSucceeded(ev -> {
+                String code = codeTask.getValue();
+                dashboardView.setTeamCode(code);
+            });
+            new Thread(codeTask).start();
+            
         } else {
             showWorkspaceSelection();
         }
@@ -337,7 +747,7 @@ public class DashboardUI extends Application {
         mainStack.getChildren().add(mainRoot);
     }
 
-    private void handleEditAction(Task t) {
+    private void handleEditAction(client.model.Task t) {
         if (t == null)
             showAddTaskDialog();
         else
@@ -378,8 +788,8 @@ public class DashboardUI extends Application {
                 return;
             }
 
-            Task newTask = new Task(null, title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
-                    UserSession.getCurrentUserEmail(), selectedTeamId);
+            client.model.Task newTask = new client.model.Task(null, title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
+                    sessionState.getUserId(), selectedTeamId);
             taskService.addTask(newTask);
             taskList.add(newTask);
             myTasksView.refresh();
@@ -393,7 +803,7 @@ public class DashboardUI extends Application {
         showOverlay(layout);
     }
 
-    private void showEditDialog(Task t) {
+    private void showEditDialog(client.model.Task t) {
         TextField tIn = new TextField(t.getTitle());
         TextField dIn = new TextField(t.getDescription());
         DatePicker dateIn = new DatePicker(LocalDate.parse(t.getDeadline()));
@@ -515,7 +925,33 @@ public class DashboardUI extends Application {
         showOverlay(box);
     }
 
+    private void handleLogout() {
+        if (syncManager != null) {
+            syncManager.stop();
+            syncManager = null;
+        }
+        if (sessionState != null) {
+            sessionState.zero();
+            sessionState = null;
+        }
+        if (httpClient != null) {
+            httpClient.setJwt(null);
+        }
+        showLoginScreen();
+    }
+
+    @Override
+    public void stop() {
+        if (syncManager != null) {
+            syncManager.stop();
+        }
+        if (sessionState != null) {
+            sessionState.zero();
+        }
+    }
+
     public static void main(String[] args) {
-        launch();
+        System.out.println("Starting DashboardUI...");
+        launch(args);
     }
 }

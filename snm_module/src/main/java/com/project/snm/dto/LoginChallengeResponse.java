@@ -10,9 +10,11 @@ import lombok.Setter;
 public class LoginChallengeResponse {
     private String saltBase64;
     private String vaultBlobBase64;
+    private String publicKeyBase64;
 
-    public LoginChallengeResponse(String saltBase64, String vaultBlobBase64) {
+    public LoginChallengeResponse(String saltBase64, String vaultBlobBase64, String publicKeyBase64) {
         this.saltBase64 = saltBase64;
         this.vaultBlobBase64 = vaultBlobBase64;
+        this.publicKeyBase64 = publicKeyBase64;
     }
 }
