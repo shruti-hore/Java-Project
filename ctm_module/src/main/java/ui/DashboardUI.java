@@ -104,10 +104,21 @@ public class DashboardUI extends Application {
 
         stage.setScene(scene);
         stage.setTitle("Secure Task Manager");
+        stage.setMaximized(true);
         stage.centerOnScreen();
         stage.show();
 
         showLoginScreen();
+    }
+
+    @Override
+    public void stop() {
+        if (syncManager != null) {
+            syncManager.stop();
+        }
+        if (sessionState != null) {
+            sessionState.zero();
+        }
     }
 
     private void showLoginScreen() {
@@ -472,9 +483,12 @@ public class DashboardUI extends Application {
                 );
                 taskService = new service.TaskService(encryptedTaskService, sessionState, selectedTeamId);
                 
-                syncManager = new SyncManager(
+                if (syncManager != null) {
+                    syncManager.stop();
+                }
+                syncManager = new client.sync.SyncManager(
                     localCache,
-                    new ConflictResolver(),
+                    new client.sync.ConflictResolver(),
                     encryptedTaskService,
                     sessionState,
                     httpClient.getClient(),
@@ -529,6 +543,13 @@ public class DashboardUI extends Application {
             String name = nameField.getText();
             if (name == null || name.trim().isEmpty()) {
                 statusLabel.setText("Name cannot be empty");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+                return;
+            }
+            
+            if (!name.matches("^[A-Za-z0-9 ]+$")) {
+                statusLabel.setText("Team name can only contain letters and numbers");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
                 return;
             }
             
@@ -683,14 +704,7 @@ public class DashboardUI extends Application {
                     else { mainRoot.setCenter(myTasksView); myTasksView.refresh(); }
                     break;
                 case "CALENDAR": 
-                    if (selectedTeam == null) {
-                        ObservableList<client.model.Task> allTasks = FXCollections.observableArrayList(taskService.getAllTasks(userEmail, null));
-                        ui.views.CalendarView globalCal = new ui.views.CalendarView(allTasks);
-                        mainRoot.setCenter(globalCal);
-                    } else { 
-                        mainRoot.setCenter(calendarView); 
-                        calendarView.refresh(); 
-                    }
+                    loadGlobalCalendar();
                     break;
                 case "LOGOUT": handleLogout(); break;
                 default: showError("Module coming soon!");
@@ -718,6 +732,8 @@ public class DashboardUI extends Application {
                 mainRoot.setCenter(myTasksView);
                 myTasksView.refresh();
             });
+            dashboardView.getCreateWorkspaceButton().setOnAction(e -> handleCreateTeam());
+            dashboardView.getJoinWorkspaceButton().setOnAction(e -> handleJoinTeam());
 
             mainRoot.setCenter(dashboardView);
 
@@ -734,12 +750,58 @@ public class DashboardUI extends Application {
             });
             new Thread(codeTask).start();
             
-        } else {
-            showWorkspaceSelection();
         }
+        
+        // Removed showWorkspaceSelection() recursion to prevent dual task execution.
 
         mainRoot.setLeft(sidebar);
         mainStack.getChildren().add(mainRoot);
+    }
+
+    private void loadGlobalCalendar() {
+        VBox loading = new VBox(20, new ProgressIndicator(), new Label("Syncing workspaces..."));
+        loading.setAlignment(Pos.CENTER);
+        mainRoot.setCenter(loading);
+        
+        Task<List<client.model.Task>> task = new Task<>() {
+            @Override
+            protected List<client.model.Task> call() throws Exception {
+                List<client.model.Task> allTasks = new java.util.ArrayList<>();
+                List<model.Team> teams = teamService.getTeamsForUser(sessionState.getUserId());
+                
+                for (model.Team team : teams) {
+                    try {
+                        if (!sessionState.hasTeamKey(team.getId())) {
+                            String envelopeBase64 = httpClient.fetchTeamKeyEnvelope(team.getId());
+                            byte[] ownerPublicKeyBytes = httpClient.fetchOwnerPublicKey(team.getId());
+                            java.security.PublicKey ownerPublicKey = cryptoAdapter.loadPublicKey(ownerPublicKeyBytes);
+                            byte[] teamKeyBytes = cryptoAdapter.unwrapTeamKey(
+                                Base64.getDecoder().decode(envelopeBase64),
+                                ownerPublicKey,
+                                sessionState.getX25519PrivateKey()
+                            );
+                            sessionState.addTeamKey(team.getId(), teamKeyBytes);
+                            java.util.Arrays.fill(teamKeyBytes, (byte) 0);
+                        }
+                        
+                        List<client.model.Task> teamTasks = encryptedTaskService.getAllTasksForTeam(team.getId(), sessionState);
+                        allTasks.addAll(teamTasks);
+                    } catch (Exception ex) {
+                        System.err.println("Failed to load tasks for team " + team.getId() + ": " + ex.getMessage());
+                    }
+                }
+                return allTasks;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            calendarView = new ui.views.CalendarView(task.getValue());
+            mainRoot.setCenter(calendarView);
+        });
+
+        task.setOnFailed(e -> showError("Failed to load calendar: " + task.getException().getMessage()));
+
+        new Thread(task).start();
     }
 
     private void handleEditAction(client.model.Task t) {
@@ -935,15 +997,6 @@ public class DashboardUI extends Application {
         showLoginScreen();
     }
 
-    @Override
-    public void stop() {
-        if (syncManager != null) {
-            syncManager.stop();
-        }
-        if (sessionState != null) {
-            sessionState.zero();
-        }
-    }
 
     public static void main(String[] args) {
         System.out.println("Starting DashboardUI...");

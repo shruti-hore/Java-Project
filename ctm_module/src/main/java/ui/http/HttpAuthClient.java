@@ -135,7 +135,7 @@ public class HttpAuthClient {
     }
 
     public String fetchWorkspaceCode(String teamId) throws IOException, InterruptedException {
-        HttpRequest request = newRequestBuilder("/teams/" + teamId + "/code")
+        HttpRequest request = newRequestBuilder("/api/teams/" + teamId + "/code")
             .GET()
             .build();
 
