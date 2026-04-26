@@ -46,7 +46,7 @@ public class AuthServiceIntegrationTest {
 
         // 2. Login
         SessionState session = authService.login(email, passwordCopy, user.getSalt(), 
-                                                 user.getKeyVault(), user.getPublicKey());
+                                                 user.getKeyVault(), user.getPublicKey(), "dummy-jwt");
 
         assertThat(session).isNotNull();
         assertThat(session.getUserId()).isEqualTo(email);
@@ -63,7 +63,7 @@ public class AuthServiceIntegrationTest {
         User user = authService.register(email, password);
 
         assertThatThrownBy(() -> authService.login(email, wrongPassword, user.getSalt(), 
-                                                 user.getKeyVault(), user.getPublicKey()))
+                                                 user.getKeyVault(), user.getPublicKey(), "dummy-jwt"))
                 .isInstanceOf(AEADBadTagException.class);
     }
 
@@ -74,7 +74,7 @@ public class AuthServiceIntegrationTest {
         User user = authService.register(email, password);
 
         SessionState session = authService.login(email, "password".toCharArray(), user.getSalt(), 
-                                                 user.getKeyVault(), user.getPublicKey());
+                                                 user.getKeyVault(), user.getPublicKey(), "dummy-jwt");
         
         byte[] authKey = session.getAuthSigningKey();
         byte[] pubKeyBytes = session.getX25519PublicKeyBytes();
@@ -100,7 +100,7 @@ public class AuthServiceIntegrationTest {
         
         // User A logs in to recover private key
         SessionState sessionA = authService.login("a@test.com", "passA".toCharArray(), userA.getSalt(), 
-                                                  userA.getKeyVault(), userA.getPublicKey());
+                                                  userA.getKeyVault(), userA.getPublicKey(), "dummy-jwt");
         
         PrivateKey recoveredPrivA = sessionA.getX25519PrivateKey();
         PublicKey pubA = cryptoAdapter.loadPublicKey(userA.getPublicKey());

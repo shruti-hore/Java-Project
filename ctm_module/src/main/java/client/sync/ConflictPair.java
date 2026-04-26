@@ -1,22 +1,15 @@
 package client.sync;
 
+import client.crypto.EncryptedDocumentPayload;
+
 /**
- * Stub: Represents a conflict between local and remote versions of a document.
+ * WIRE-FIX: Represents a conflict between local and remote versions of a document.
+ * Uses a record to match the accessor patterns expected by SyncManager.
  */
-public class ConflictPair {
-    private String documentUuid;
-    private String localVersion;
-    private String remoteVersion;
-
-    public ConflictPair() {}
-
-    public ConflictPair(String documentUuid, String localVersion, String remoteVersion) {
-        this.documentUuid = documentUuid;
-        this.localVersion = localVersion;
-        this.remoteVersion = remoteVersion;
-    }
-
-    public String getDocumentUuid() { return documentUuid; }
-    public String getLocalVersion() { return localVersion; }
-    public String getRemoteVersion() { return remoteVersion; }
-}
+public record ConflictPair(
+    String docUuid, 
+    String teamId, 
+    EncryptedDocumentPayload localPayload, 
+    String serverBlobRef, 
+    byte[] teamKey
+) {}

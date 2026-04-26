@@ -2,21 +2,31 @@ package service;
 
 import model.Team;
 import java.util.List;
+import java.io.IOException;
 
 public class TeamService {
-    private final MongoService mongo = new MongoService();
+    private final ui.http.HttpAuthClient httpClient;
 
-    public List<Team> getTeamsForUser(String email) {
-        return mongo.getTeamsForUser(email);
+    public TeamService(ui.http.HttpAuthClient httpClient) {
+        this.httpClient = httpClient;
+    }
+
+    public List<Team> getTeamsForUser(String email) throws IOException {
+        try {
+            List<ui.http.HttpAuthClient.WorkspaceSummary> summaries = httpClient.fetchWorkspaces();
+            return summaries.stream()
+                .map(ws -> new Team(ws.teamId(), ws.name(), ws.ownerUserId()))
+                .collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            throw new IOException("Failed to fetch workspaces", e);
+        }
     }
 
     public void createTeam(String name, String ownerEmail) {
-        Team team = new Team(null, name, ownerEmail);
-        team.addMember(ownerEmail);
-        mongo.createTeam(team);
+        throw new UnsupportedOperationException("Use DashboardUI.showCreateTeamDialog()");
     }
 
     public void joinTeam(String teamId, String email) {
-        mongo.inviteToTeam(teamId, email);
+        throw new UnsupportedOperationException("Use DashboardUI.showJoinTeamDialog()");
     }
 }

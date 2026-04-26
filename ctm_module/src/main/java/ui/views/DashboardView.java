@@ -66,6 +66,20 @@ public class DashboardView extends BorderPane {
         setRight(createRightPanel());
     }
 
+    private final TextField codeField = new TextField("Loading...");
+    private final HBox teamCodeRow = new HBox(10);
+
+    public void setTeamCode(String code) {
+        if (code != null && !code.isEmpty()) {
+            codeField.setText(code);
+            teamCodeRow.setVisible(true);
+            teamCodeRow.setManaged(true);
+        } else {
+            teamCodeRow.setVisible(false);
+            teamCodeRow.setManaged(false);
+        }
+    }
+
     private VBox createTeamHeader() {
         VBox header = new VBox(10);
         header.setPadding(new Insets(30));
@@ -77,7 +91,27 @@ public class DashboardView extends BorderPane {
         Label position = new Label("YOUR POSITION: OWNER"); // Placeholder for now
         position.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px; -fx-font-weight: bold;");
 
-        header.getChildren().addAll(teamName, position);
+        Label codeLbl = new Label("Invite Code:");
+        codeLbl.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 12px;");
+        
+        codeField.setEditable(false);
+        codeField.setStyle("-fx-font-family: 'monospace'; -fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;");
+        
+        Button copyBtn = new Button("Copy");
+        copyBtn.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 4;");
+        copyBtn.setOnAction(e -> {
+            javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(codeField.getText());
+            clipboard.setContent(content);
+        });
+
+        teamCodeRow.getChildren().addAll(codeLbl, codeField, copyBtn);
+        teamCodeRow.setAlignment(Pos.CENTER_LEFT);
+        teamCodeRow.setVisible(false);
+        teamCodeRow.setManaged(false);
+
+        header.getChildren().addAll(teamName, position, teamCodeRow);
         return header;
     }
 

@@ -1,6 +1,7 @@
 package auth.session;
 
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +44,16 @@ public final class SessionState {
         return x25519PublicKeyBytes;
     }
 
+    private PublicKey x25519PublicKey; // Cached object
+
+    public PublicKey getX25519PublicKey() {
+        return x25519PublicKey;
+    }
+
+    public void setX25519PublicKey(PublicKey key) {
+        this.x25519PublicKey = key;
+    }
+
     public void addTeamKey(String teamId, byte[] teamKey) {
         teamKeys.put(teamId, teamKey);
     }
@@ -53,6 +64,10 @@ public final class SessionState {
             throw new IllegalStateException("Team key not found for ID: " + teamId);
         }
         return key;
+    }
+
+    public boolean hasTeamKey(String teamId) {
+        return teamKeys.containsKey(teamId);
     }
 
     /**

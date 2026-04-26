@@ -71,7 +71,7 @@ public class AuthControllerTest {
         user.setSaltBase64("salt");
         user.setVaultBlobBase64("vault");
 
-        when(userService.findByEmailHmac("hmac")).thenReturn(user);
+        when(userService.findByEmail("hmac")).thenReturn(user);
 
         mockMvc.perform(post("/auth/login/challenge")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -83,7 +83,7 @@ public class AuthControllerTest {
 
     @Test
     void testLoginChallengeNotFound() throws Exception {
-        when(userService.findByEmailHmac("hmac")).thenThrow(new NotFoundException("Not Found"));
+        when(userService.findByEmail("hmac")).thenThrow(new NotFoundException("Not Found"));
 
         mockMvc.perform(post("/auth/login/challenge")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ public class AuthControllerTest {
         user.setBcryptHash(BCrypt.hashpw("hash", BCrypt.gensalt()));
         user.setPublicKeyBase64("pubkey");
 
-        when(userService.findByEmailHmac("hmac")).thenReturn(user);
+        when(userService.findByEmail("hmac")).thenReturn(user);
         when(jwtService.issueToken("user-123")).thenReturn("fake-jwt");
 
         mockMvc.perform(post("/auth/login/verify")
@@ -114,7 +114,7 @@ public class AuthControllerTest {
         UserRecord user = new UserRecord();
         user.setBcryptHash(BCrypt.hashpw("other-hash", BCrypt.gensalt()));
 
-        when(userService.findByEmailHmac("hmac")).thenReturn(user);
+        when(userService.findByEmail("hmac")).thenReturn(user);
 
         mockMvc.perform(post("/auth/login/verify")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -127,7 +127,7 @@ public class AuthControllerTest {
         UserRecord user = new UserRecord();
         user.setPublicKeyBase64("pubkey");
 
-        when(userService.findByEmailHmac("hmac")).thenReturn(user);
+        when(userService.findByEmail("hmac")).thenReturn(user);
 
         mockMvc.perform(post("/auth/lookup")
                 .contentType(MediaType.APPLICATION_JSON)

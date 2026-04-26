@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import client.crypto.EncryptedDocumentPayload;
+import java.io.IOException;
 
 public class HttpAuthClient {
 
@@ -96,6 +97,61 @@ public class HttpAuthClient {
             "saltBase64", saltBase64
         );
         return post("/auth/register", body);
+    }
+
+    public record JoinWorkspaceResponse(String teamId, String name, String status) {}
+    public record CreateWorkspaceResponse(String teamId, String workspaceCode) {}
+
+    public CompletableFuture<JoinWorkspaceResponse> joinWorkspace(String workspaceCode) {
+        Map<String, String> body = Map.of("workspaceCode", workspaceCode);
+        return post("/workspaces/join", body).thenApply(map -> {
+            return new JoinWorkspaceResponse(
+                (String)map.get("teamId"), 
+                (String)map.get("name"), 
+                (String)map.get("status")
+            );
+        });
+    }
+
+    public CompletableFuture<CreateWorkspaceResponse> createWorkspace(String name, String ownerPublicKeyBase64) {
+        Map<String, String> body = Map.of(
+            "name", name,
+            "ownerPublicKeyBase64", ownerPublicKeyBase64
+        );
+        return post("/workspaces", body).thenApply(map -> {
+            return new CreateWorkspaceResponse(
+                (String)map.get("teamId"), 
+                (String)map.get("workspaceCode")
+            );
+        });
+    }
+
+    public CompletableFuture<Void> postKeyEnvelope(String teamId, String userId, String envelopeBase64) {
+        Map<String, String> body = Map.of(
+            "userId", userId,
+            "envelopeBase64", envelopeBase64
+        );
+        return post("/workspaces/" + teamId + "/envelopes", body).thenApply(map -> null);
+    }
+
+    public String fetchWorkspaceCode(String teamId) throws IOException, InterruptedException {
+        HttpRequest request = newRequestBuilder("/teams/" + teamId + "/code")
+            .GET()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            throw new IOException("Failed to fetch workspace code: " + response.body());
+        }
+        
+        // Assume the response body is just the code string or a JSON object with a 'code' field.
+        // Let's parse as JSON if it looks like it, otherwise return raw string.
+        try {
+            Map<String, String> map = objectMapper.readValue(response.body(), Map.class);
+            return map.get("code") != null ? map.get("code") : response.body();
+        } catch (Exception e) {
+            return response.body();
+        }
     }
 
     private HttpRequest.Builder newRequestBuilder(String path) {

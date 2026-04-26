@@ -9,6 +9,7 @@ public class Task extends ProjectItem {
 
     private String userId;
     private String teamId;
+    private int currentVersionSeq;
 
     public Task(String id, String title, String description,
                 String deadline, boolean completed, String status, String priority, String userId, String teamId) {
@@ -20,7 +21,11 @@ public class Task extends ProjectItem {
         this.priority = priority;
         this.userId = userId;
         this.teamId = teamId;
+        this.currentVersionSeq = 0;
     }
+
+    public int getCurrentVersionSeq() { return currentVersionSeq; }
+    public void setCurrentVersionSeq(int seq) { this.currentVersionSeq = seq; }
 
     public String getUserId() { return userId; }
     public void setUserId(String userId) { this.userId = userId; }
