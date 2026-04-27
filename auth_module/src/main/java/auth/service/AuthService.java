@@ -1,49 +1,58 @@
 package auth.service;
 
 import auth.model.User;
+import auth.session.SessionState;
 import crypto.api.X25519KeyPair;
+
+import javax.crypto.AEADBadTagException;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import auth.session.SessionState;
-import javax.crypto.AEADBadTagException;
 
-public class AuthService {
-
+public class AuthService 
+{
     private final CryptoAdapter cryptoAdapter;
 
-    public AuthService(CryptoAdapter cryptoAdapter) {
+    public AuthService(CryptoAdapter cryptoAdapter) 
+    {
         this.cryptoAdapter = cryptoAdapter;
     }
 
-    public User register(String email, char[] password) {
+    // =========================
+    // REGISTER
+    // =========================
+    public User register(String email, char[] password) 
+    {
+        if (email == null || password == null) 
+            throw new IllegalArgumentException("Email and password must not be null");
+
         byte[] salt = generateSalt();
         byte[] masterKey = null;
         byte[] vaultKey = null;
         byte[] authKey = null;
-        X25519KeyPair keyPair = null;
         byte[] privateKeyBytes = null;
-        byte[] publicKeyBytes = null;
-        byte[] vaultBlob = null;
 
-        try {
-            // Step 1: Master Key
+        try 
+        {
+            // Step 1: Master Key (Argon2)
             masterKey = cryptoAdapter.deriveMasterKey(password, salt);
 
-            // Step 2: Vault Key
+            // Step 2: Vault Key (HKDF)
             vaultKey = cryptoAdapter.deriveVaultKey(masterKey);
 
-            // Step 3: Auth Signing Key
+            // Step 3: Auth Signing Key (HKDF)
             authKey = cryptoAdapter.deriveAuthKey(masterKey);
 
-            // Step 4: Key Pair
-            keyPair = cryptoAdapter.generateKeyPair();
-            publicKeyBytes = cryptoAdapter.extractPublicKeyBytes(keyPair.publicKey());
+            // Step 4: Generate X25519 key pair
+            X25519KeyPair keyPair = cryptoAdapter.generateKeyPair();
+
+            byte[] publicKeyBytes = cryptoAdapter.extractPublicKeyBytes(keyPair.publicKey());
+
             privateKeyBytes = keyPair.privateKeyBytes();
 
-            // Step 5: Vault Encryption
-            vaultBlob = cryptoAdapter.encryptVault(privateKeyBytes, vaultKey);
+            // Step 5: Encrypt private key into vault (AES-GCM)
+            byte[] vaultBlob = cryptoAdapter.encryptVault(privateKeyBytes, vaultKey);
 
-            // Create user object
+            // Step 6: Build user object
             User user = new User();
             user.setEmail(email);
             user.setPublicKey(publicKeyBytes);
@@ -52,29 +61,39 @@ public class AuthService {
 
             return user;
 
-        } catch (Exception e) {
+        } 
+        catch (Exception e) 
+        {
             throw new RuntimeException("Registration failed", e);
-        } finally {
-            // ✅ Secure cleanup (VERY IMPORTANT)
+        } 
+        finally 
+        {
+            // ===== CRITICAL SECURITY CLEANUP =====
             if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
             if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
             if (authKey != null) Arrays.fill(authKey, (byte) 0);
             if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
-            if (password != null) Arrays.fill(password, '0');
+            if (password != null) Arrays.fill(password, '\0');
         }
     }
 
-    public SessionState login(String email, char[] password, byte[] salt,
-                              byte[] vaultBlob, byte[] publicKeyBytes)
-            throws AEADBadTagException {
-        
+    // =========================
+    // LOGIN
+    // =========================
+    public SessionState login(String email,
+                              char[] password,
+                              byte[] salt,
+                              byte[] vaultBlob,
+                              byte[] publicKeyBytes)
+            throws AEADBadTagException 
+    {
         byte[] masterKey = null;
         byte[] vaultKey = null;
         byte[] authKey = null;
         byte[] privateKeyBytes = null;
-        java.security.PrivateKey privateKey = null;
 
-        try {
+        try 
+        {
             // Step 1: Master Key
             masterKey = cryptoAdapter.deriveMasterKey(password, salt);
 
@@ -84,26 +103,33 @@ public class AuthService {
             // Step 3: Auth Signing Key
             authKey = cryptoAdapter.deriveAuthKey(masterKey);
 
-            // Step 4: Decrypt Vault
+            // Step 4: Decrypt vault
             privateKeyBytes = cryptoAdapter.decryptVault(vaultBlob, vaultKey);
-            // AEADBadTagException propagates if password is wrong
+            // If password is wrong → AEADBadTagException
 
-            // Step 5: Load Private Key
-            privateKey = cryptoAdapter.loadPrivateKey(privateKeyBytes);
+            // Step 5: Load private key object
+            var privateKey = cryptoAdapter.loadPrivateKey(privateKeyBytes);
 
-            // Step 6: Create SessionState
+            // Step 6: Create session (authKey retained for JWT)
             return new SessionState(email, authKey, privateKey, publicKeyBytes);
 
-        } finally {
-            // Step 7: Zero sensitive material
+        } 
+        finally 
+        {
+            // ===== CLEANUP =====
             if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
             if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
             if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
-            // authKey is NOT zeroed here as it is stored in SessionState
+            if (password != null) Arrays.fill(password, '\0');
+            // authKey is intentionally NOT cleared (stored in session)
         }
     }
 
-    private byte[] generateSalt() {
+    // =========================
+    // UTIL
+    // =========================
+    private byte[] generateSalt() 
+    {
         byte[] salt = new byte[16];
         new SecureRandom().nextBytes(salt);
         return salt;
