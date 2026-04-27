@@ -23,7 +23,9 @@ public class AuthService
     public User register(String email, char[] password) 
     {
         if (email == null || password == null) 
+        {
             throw new IllegalArgumentException("Email and password must not be null");
+        }
 
         byte[] salt = generateSalt();
         byte[] masterKey = null;
@@ -32,7 +34,7 @@ public class AuthService
         byte[] privateKeyBytes = null;
 
         try 
-        {
+            {
             // Step 1: Master Key (Argon2)
             masterKey = cryptoAdapter.deriveMasterKey(password, salt);
 
@@ -105,13 +107,22 @@ public class AuthService
 
             // Step 4: Decrypt vault
             privateKeyBytes = cryptoAdapter.decryptVault(vaultBlob, vaultKey);
-            // If password is wrong → AEADBadTagException
+            // Wrong password → AEADBadTagException
 
             // Step 5: Load private key object
             var privateKey = cryptoAdapter.loadPrivateKey(privateKeyBytes);
 
-            // Step 6: Create session (authKey retained for JWT)
-            return new SessionState(email, authKey, privateKey, publicKeyBytes);
+            // Step 6: Create session
+            SessionState session = new SessionState(email, authKey, privateKey, publicKeyBytes);
+
+            // Step 7: Generate token
+            TokenService tokenService = new TokenService();
+            String token = tokenService.generateToken(email, authKey);
+
+            // Step 8: Attach token
+            session.setToken(token);
+
+            return session;
 
         } 
         finally 
@@ -121,17 +132,9 @@ public class AuthService
             if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
             if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
             if (password != null) Arrays.fill(password, '\0');
-            // authKey is intentionally NOT cleared (stored in session)
+            // authKey NOT cleared (stored in session)
         }
     }
-
-    TokenService tokenService = new TokenService();
-    String token = tokenService.generateToken(email, authKey);
-
-    SessionState session = new SessionState(email, authKey, privateKey, publicKeyBytes);
-    session.setToken(token);
-
-    return session;
 
     // =========================
     // UTIL
