@@ -25,7 +25,8 @@ public class WorkspaceView extends VBox {
         setAlignment(Pos.TOP_CENTER);
         setStyle("-fx-background-color: #f5f6fa;");
 
-        Label title = new Label("Choose your workspace");
+        String username = utils.UserSession.getCurrentUserName();
+        Label title = new Label("Welcome back, " + username);
         title.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
 
         Label sub = new Label("Select a team to start collaborating or create a new one.");
@@ -86,7 +87,7 @@ public class WorkspaceView extends VBox {
         Label name = new Label(team.getName());
         name.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #1f2937;");
         
-        Label owner = new Label("Owner: " + team.getOwnerId());
+        Label owner = new Label("Owner: " + (team.getOwnerUsername() != null ? team.getOwnerUsername() : team.getOwnerId()));
         owner.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12px;");
         
         card.getChildren().addAll(icon, name, owner);

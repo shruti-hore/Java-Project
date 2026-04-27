@@ -23,6 +23,7 @@ public class UserService {
 
         UserRecord user = new UserRecord();
         user.setEmail(request.getEmail());
+        user.setUsername(request.getUsername());
 
         // Server BCrypts the authProof before storing — double layer of protection
         String storedHash = org.springframework.security.crypto.bcrypt.BCrypt.hashpw(request.getAuthProof(), org.springframework.security.crypto.bcrypt.BCrypt.gensalt(12));

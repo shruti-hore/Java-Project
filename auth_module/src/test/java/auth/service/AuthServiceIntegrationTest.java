@@ -45,7 +45,7 @@ public class AuthServiceIntegrationTest {
         assertThat(password).containsOnly('0'); // Verify zeroing
 
         // 2. Login
-        SessionState session = authService.login(email, passwordCopy, user.getSalt(), 
+        SessionState session = authService.login(email, "testuser", passwordCopy, user.getSalt(), 
                                                  user.getKeyVault(), user.getPublicKey(), "dummy-jwt");
 
         assertThat(session).isNotNull();
@@ -62,7 +62,7 @@ public class AuthServiceIntegrationTest {
 
         User user = authService.register(email, password);
 
-        assertThatThrownBy(() -> authService.login(email, wrongPassword, user.getSalt(), 
+        assertThatThrownBy(() -> authService.login(email, "testuser", wrongPassword, user.getSalt(), 
                                                  user.getKeyVault(), user.getPublicKey(), "dummy-jwt"))
                 .isInstanceOf(AEADBadTagException.class);
     }
@@ -73,7 +73,7 @@ public class AuthServiceIntegrationTest {
         char[] password = "password".toCharArray();
         User user = authService.register(email, password);
 
-        SessionState session = authService.login(email, "password".toCharArray(), user.getSalt(), 
+        SessionState session = authService.login(email, "testuser", "password".toCharArray(), user.getSalt(), 
                                                  user.getKeyVault(), user.getPublicKey(), "dummy-jwt");
         
         byte[] authKey = session.getAuthSigningKey();
@@ -99,7 +99,7 @@ public class AuthServiceIntegrationTest {
         X25519KeyPair kpB = cryptoAdapter.generateKeyPair();
         
         // User A logs in to recover private key
-        SessionState sessionA = authService.login("a@test.com", "passA".toCharArray(), userA.getSalt(), 
+        SessionState sessionA = authService.login("a@test.com", "userA", "passA".toCharArray(), userA.getSalt(), 
                                                   userA.getKeyVault(), userA.getPublicKey(), "dummy-jwt");
         
         PrivateKey recoveredPrivA = sessionA.getX25519PrivateKey();

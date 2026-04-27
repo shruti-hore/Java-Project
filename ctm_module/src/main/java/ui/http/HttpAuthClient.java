@@ -18,7 +18,7 @@ public class HttpAuthClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private String jwt;
 
-    public record WorkspaceSummary(String teamId, String name, String ownerUserId, String lastSyncedAt) {}
+    public record WorkspaceSummary(String teamId, String name, String ownerUserId, String ownerUsername, String lastSyncedAt) {}
     public record DocumentMeta(String documentUuid, int versionSeq) {}
 
     public HttpAuthClient(HttpClient httpClient, String baseUrl) {
@@ -86,11 +86,12 @@ public class HttpAuthClient {
         return post("/auth/login/verify", body);
     }
 
-    public CompletableFuture<Map<String, String>> register(String email, String authProof, 
+    public CompletableFuture<Map<String, String>> register(String email, String username, String authProof, 
                                                            String publicKeyBase64, String vaultBlobBase64, 
                                                            String saltBase64) {
         Map<String, String> body = Map.of(
             "email", email,
+            "username", username,
             "authProof", authProof,
             "publicKeyBase64", publicKeyBase64,
             "vaultBlobBase64", vaultBlobBase64,
@@ -177,7 +178,11 @@ public class HttpAuthClient {
                         throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
                     }
                     try {
-                        return objectMapper.readValue(response.body(), Map.class);
+                        String responseBody = response.body();
+                        if (responseBody == null || responseBody.isBlank()) {
+                            return java.util.Map.of();
+                        }
+                        return objectMapper.readValue(responseBody, Map.class);
                     } catch (Exception e) {
                         throw new RuntimeException("Failed to parse response", e);
                     }

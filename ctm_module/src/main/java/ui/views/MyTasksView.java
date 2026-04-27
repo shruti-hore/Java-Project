@@ -19,6 +19,11 @@ public class MyTasksView extends VBox {
     private HBox workloadSummary;
     private Consumer<Task> onEdit;
     private Consumer<Task> onDelete;
+    private Runnable onTaskUpdated;
+
+    public void setOnTaskUpdated(Runnable onTaskUpdated) {
+        this.onTaskUpdated = onTaskUpdated;
+    }
 
     public MyTasksView(TaskService service, ObservableList<Task> tasks, Consumer<Task> editAction, Consumer<Task> deleteAction) {
         this.taskService = service;
@@ -109,6 +114,7 @@ public class MyTasksView extends VBox {
                 if (found != null && !found.getStatus().equals(status)) {
                     taskService.updateStatus(found, status);
                     refresh();
+                    if (onTaskUpdated != null) onTaskUpdated.run();
                 }
                 event.setDropCompleted(true);
             }
@@ -127,7 +133,10 @@ public class MyTasksView extends VBox {
         for (Task t : taskList) {
             if (!searchText.isEmpty() && !t.getTitle().toLowerCase().contains(searchText)) continue;
 
-            TaskCard card = new TaskCard(t, taskService, this::refresh, onEdit, onDelete);
+            TaskCard card = new TaskCard(t, taskService, () -> {
+                this.refresh();
+                if (onTaskUpdated != null) onTaskUpdated.run();
+            }, onEdit, onDelete);
             
             if ("DEADLINE".equals(t.getStatus())) deadlineColumn.getChildren().add(card);
             else if ("IN_PROGRESS".equals(t.getStatus())) inProgressColumn.getChildren().add(card);

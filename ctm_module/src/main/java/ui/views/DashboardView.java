@@ -45,14 +45,20 @@ public class DashboardView extends BorderPane {
         // --- TOP BAR ---
         setTop(createTopBar());
 
+        refresh();
+    }
+
+    public void refresh() {
         // --- CENTER CONTENT (Scrollable) ---
         VBox centerContent = new VBox(30);
         centerContent.setPadding(new Insets(30));
         
         centerContent.getChildren().addAll(
+            createWelcomeCard(),
             createTeamHeader(),
             createTeamMembersSection(),
             createStatsRow(),
+            createWorkloadAnalysisSection(),
             createTimelineSection(),
             createWorkspaceSection()
         );
@@ -88,7 +94,8 @@ public class DashboardView extends BorderPane {
         Label teamName = new Label(team != null ? team.getName().toUpperCase() : "NO TEAM SELECTED");
         teamName.setStyle("-fx-text-fill: white; -fx-font-size: 28px; -fx-font-weight: bold;");
 
-        Label position = new Label("YOUR POSITION: OWNER"); // Placeholder for now
+        String ownerInfo = (team != null && team.getOwnerUsername() != null) ? team.getOwnerUsername() : (team != null ? team.getOwnerId() : "Unknown");
+        Label position = new Label("OWNER: " + ownerInfo); 
         position.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label codeLbl = new Label("Invite Code:");
@@ -132,7 +139,7 @@ public class DashboardView extends BorderPane {
                 Region avatar = new Region();
                 avatar.setPrefSize(40, 40);
                 avatar.setStyle("-fx-background-color: #f3f4f6; -fx-background-radius: 20; -fx-border-color: #e5e7eb; -fx-border-radius: 20;");
-                Label name = new Label(member.split("@")[0]);
+                Label name = new Label(member.contains("@") ? member.split("@")[0] : member);
                 name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6b7280;");
                 m.getChildren().addAll(avatar, name);
                 membersBox.getChildren().add(m);
@@ -201,7 +208,8 @@ public class DashboardView extends BorderPane {
         VBox welcome = new VBox(15);
         welcome.getStyleClass().add("welcome-card");
         
-        Label title = new Label("Your Task Management Area");
+        String username = utils.UserSession.getCurrentUserName();
+        Label title = new Label("Welcome back, " + username);
         title.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
         
         long pending = getCount("DEADLINE") + getCount("IN_PROGRESS");

@@ -55,7 +55,7 @@ public class AuthController {
             if (BCrypt.checkpw(request.getAuthProof(), user.getBcryptHash())) {
                 log.info("Password verified successfully.");
                 String token = jwtService.issueToken(user.getUserId());
-                return ResponseEntity.ok(new LoginVerifyResponse(token, user.getUserId(), user.getPublicKeyBase64()));
+                return ResponseEntity.ok(new LoginVerifyResponse(token, user.getUserId(), user.getUsername(), user.getPublicKeyBase64()));
             } else {
                 log.warn("Password verification failed for email: {}", request.getEmail());
             }

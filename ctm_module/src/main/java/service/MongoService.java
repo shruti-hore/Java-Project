@@ -99,7 +99,9 @@ public class MongoService {
     public List<Team> getTeamsForUser(String email) {
         List<Team> list = new ArrayList<>();
         for (Document doc : db.getCollection("teams").find(com.mongodb.client.model.Filters.in("members", email))) {
-            Team t = new Team(doc.getObjectId("_id").toString(), doc.getString("name"), doc.getString("ownerId"));
+            String ownerUsername = doc.getString("ownerUsername");
+            if (ownerUsername == null) ownerUsername = doc.getString("ownerId");
+            Team t = new Team(doc.getObjectId("_id").toString(), doc.getString("name"), doc.getString("ownerId"), ownerUsername);
             List<String> members = (List<String>) doc.get("members");
             if (members != null) for (String m : members) t.addMember(m);
             list.add(t);

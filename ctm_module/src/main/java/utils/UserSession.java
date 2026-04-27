@@ -24,4 +24,14 @@ public class UserSession {
     public static String getCurrentUserEmail() {
         return currentUser != null ? currentUser.getEmail() : "Guest";
     }
+
+    public static String getCurrentUserName() {
+        if (currentUser == null) return "User";
+        String name = currentUser.getName();
+        if (name == null || name.isEmpty() || name.equals("null")) {
+            String email = currentUser.getEmail();
+            return (email != null && email.contains("@")) ? email.split("@")[0] : "User";
+        }
+        return name;
+    }
 }

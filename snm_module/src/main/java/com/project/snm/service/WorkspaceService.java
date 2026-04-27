@@ -99,6 +99,13 @@ public class WorkspaceService {
         return owner.getPublicKeyBase64();
     }
 
+    /** Gets the username for a given userId UUID. */
+    public String getUsernameById(String userId) {
+        return userRepository.findById(userId)
+                .map(UserRecord::getUsername)
+                .orElse("User");
+    }
+
     private String generateWorkspaceCode() {
         byte[] bytes = new byte[6];
         new SecureRandom().nextBytes(bytes);

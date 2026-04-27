@@ -48,12 +48,16 @@ public class WorkspaceController {
         log.info("Listing workspaces for userId={}", userId);
 
         List<Team> teams = workspaceService.getWorkspacesForUser(userId);
-        List<Map<String, String>> result = teams.stream().map(t -> Map.of(
+        List<Map<String, String>> result = teams.stream().map(t -> {
+            String ownerName = workspaceService.getUsernameById(t.getOwnerUserId());
+            return Map.of(
                 "teamId",      t.getId(),
                 "name",        t.getTeamName() != null ? t.getTeamName() : "",
                 "ownerUserId", t.getOwnerUserId() != null ? t.getOwnerUserId() : "",
+                "ownerUsername", ownerName != null ? ownerName : "User",
                 "lastSyncedAt", ""
-        )).collect(Collectors.toList());
+            );
+        }).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
     }

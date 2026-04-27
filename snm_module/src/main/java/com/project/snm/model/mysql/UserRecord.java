@@ -17,6 +17,9 @@ public class UserRecord {
 
     @Column(unique = true, nullable = false)
     private String email;              // Stored in plaintext. Used for lookup.
+    
+    @Column(unique = true, nullable = false)
+    private String username;
 
     @Column(nullable = false)
     private String bcryptHash;

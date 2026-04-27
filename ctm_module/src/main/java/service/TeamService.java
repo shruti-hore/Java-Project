@@ -15,7 +15,7 @@ public class TeamService {
         try {
             List<ui.http.HttpAuthClient.WorkspaceSummary> summaries = httpClient.fetchWorkspaces();
             return summaries.stream()
-                .map(ws -> new Team(ws.teamId(), ws.name(), ws.ownerUserId()))
+                .map(ws -> new Team(ws.teamId(), ws.name(), ws.ownerUserId(), ws.ownerUsername()))
                 .collect(java.util.stream.Collectors.toList());
         } catch (Exception e) {
             throw new IOException("Failed to fetch workspaces", e);

@@ -1,0 +1,107 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.project:snm-backend >-----------------------
+[INFO] Building snm-backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.0.5:run (default-cli) > test-compile @ snm-backend >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ snm-backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ snm-backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ snm-backend ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ snm-backend ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:4.0.5:run (default-cli) < test-compile @ snm-backend <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.0.5:run (default-cli) @ snm-backend ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.5)
+
+2026-04-27T14:33:33.094+05:30  INFO 22648 --- [aegis-backend] [           main] com.project.snm.SnmBackendApplication    : Starting SnmBackendApplication using Java 25.0.2 with PID 22648 (C:\Users\Shruti\CODES\Java-Project\snm_module\target\classes started by Shruti in C:\Users\Shruti\CODES\Java-Project\snm_module)
+2026-04-27T14:33:33.100+05:30  INFO 22648 --- [aegis-backend] [           main] com.project.snm.SnmBackendApplication    : No active profile set, falling back to 1 default profile: "default"
+2026-04-27T14:33:34.074+05:30  INFO 22648 --- [aegis-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-27T14:33:34.079+05:30  INFO 22648 --- [aegis-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-27T14:33:34.149+05:30  INFO 22648 --- [aegis-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data JPA - Could not safely identify store assignment for repository candidate interface com.project.snm.repository.ContentBlobRepository; If you want this repository to be a JPA repository, consider annotating your entities with one of these annotations: jakarta.persistence.Entity, jakarta.persistence.MappedSuperclass (preferred), or consider extending one of the following types with your repository: org.springframework.data.jpa.repository.JpaRepository
+2026-04-27T14:33:34.201+05:30  INFO 22648 --- [aegis-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 108 ms. Found 5 JPA repository interfaces.
+2026-04-27T14:33:34.259+05:30  INFO 22648 --- [aegis-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-27T14:33:34.259+05:30  INFO 22648 --- [aegis-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data MongoDB repositories in DEFAULT mode.
+2026-04-27T14:33:34.270+05:30  INFO 22648 --- [aegis-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface com.project.snm.repository.DocumentVersionRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-04-27T14:33:34.271+05:30  INFO 22648 --- [aegis-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface com.project.snm.repository.TeamKeyEnvelopeRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-04-27T14:33:34.272+05:30  INFO 22648 --- [aegis-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface com.project.snm.repository.TeamMemberRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-04-27T14:33:34.272+05:30  INFO 22648 --- [aegis-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface com.project.snm.repository.TeamRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-04-27T14:33:34.272+05:30  INFO 22648 --- [aegis-backend] [           main] .RepositoryConfigurationExtensionSupport : Spring Data MongoDB - Could not safely identify store assignment for repository candidate interface com.project.snm.repository.UserRepository; If you want this repository to be a MongoDB repository, consider annotating your entities with one of these annotations: org.springframework.data.mongodb.core.mapping.Document (preferred), or consider extending one of the following types with your repository: org.springframework.data.mongodb.repository.MongoRepository
+2026-04-27T14:33:34.280+05:30  INFO 22648 --- [aegis-backend] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 18 ms. Found 1 MongoDB repository interface.
+2026-04-27T14:33:35.046+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-04-27T14:33:35.065+05:30  INFO 22648 --- [aegis-backend] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-27T14:33:35.066+05:30  INFO 22648 --- [aegis-backend] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.20]
+2026-04-27T14:33:35.158+05:30  INFO 22648 --- [aegis-backend] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1992 ms
+2026-04-27T14:33:35.414+05:30  INFO 22648 --- [aegis-backend] [           main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-04-27T14:33:35.494+05:30  INFO 22648 --- [aegis-backend] [           main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.2.7.Final
+2026-04-27T14:33:36.216+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-27T14:33:36.261+05:30  INFO 22648 --- [aegis-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-04-27T14:33:36.788+05:30  INFO 22648 --- [aegis-backend] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@33837bd4
+2026-04-27T14:33:36.792+05:30  INFO 22648 --- [aegis-backend] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-04-27T14:33:36.914+05:30  INFO 22648 --- [aegis-backend] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:mysql://localhost:3306/aegis_metadata]
+	Database driver: MySQL Connector/J
+	Database dialect: MySQLDialect
+	Database version: 8.0.42
+	Default catalog/schema: aegis_metadata/undefined
+	Autocommit mode: undefined/unknown
+	Isolation level: REPEATABLE_READ [default REPEATABLE_READ]
+	JDBC fetch size: none
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-04-27T14:33:38.534+05:30  INFO 22648 --- [aegis-backend] [           main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: create table document_versions (id bigint not null auto_increment, aad_base64 varchar(255), blob_id varchar(255), created_at datetime(6), created_by varchar(255), document_uuid varchar(255), nonce_base64 varchar(255), team_id varchar(255), vector_clock_json varchar(2000), version_seq bigint, primary key (id)) engine=InnoDB
+Hibernate: create table team_key_envelopes (envelope_id varchar(255) not null, envelope_base64 TEXT not null, team_id varchar(255) not null, user_id varchar(255) not null, primary key (envelope_id)) engine=InnoDB
+Hibernate: create table team_members (id varchar(255) not null, joined_at datetime(6), role varchar(255), team_id varchar(255) not null, user_id varchar(255) not null, primary key (id)) engine=InnoDB
+Hibernate: create table teams (id varchar(255) not null, created_at datetime(6), owner_user_id varchar(255), team_name varchar(255), workspace_code varchar(255), primary key (id)) engine=InnoDB
+Hibernate: create table users (user_id varchar(255) not null, bcrypt_hash varchar(255) not null, email varchar(255) not null, public_key_base64 varchar(64) not null, salt_base64 varchar(32) not null, username varchar(255) not null, vault_blob_base64 TEXT not null, primary key (user_id)) engine=InnoDB
+Hibernate: alter table team_key_envelopes drop index UKp0o4orxolxasedh9xub5kry4m
+Hibernate: alter table team_key_envelopes add constraint UKp0o4orxolxasedh9xub5kry4m unique (team_id, user_id)
+Hibernate: alter table team_members drop index UKmreuu88ksu0sw6wy64dqa1cv3
+Hibernate: alter table team_members add constraint UKmreuu88ksu0sw6wy64dqa1cv3 unique (team_id, user_id)
+Hibernate: alter table teams drop index UK549essmadfst899g1g3i9v81b
+Hibernate: alter table teams add constraint UK549essmadfst899g1g3i9v81b unique (workspace_code)
+Hibernate: alter table users drop index UK6dotkott2kjsp8vw4d0m25fb7
+Hibernate: alter table users add constraint UK6dotkott2kjsp8vw4d0m25fb7 unique (email)
+Hibernate: alter table users drop index UKr43af9ap4edm43mmtq01oddj6
+Hibernate: alter table users add constraint UKr43af9ap4edm43mmtq01oddj6 unique (username)
+2026-04-27T14:33:39.145+05:30  INFO 22648 --- [aegis-backend] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-27T14:33:39.267+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-04-27T14:33:39.751+05:30  INFO 22648 --- [aegis-backend] [           main] org.mongodb.driver.client                : MongoClient with metadata {"driver": {"name": "mongo-java-driver|spring-boot|sync", "version": "5.6.4"}, "os": {"type": "Windows", "name": "Windows 11", "architecture": "amd64", "version": "10.0"}, "platform": "Java/Oracle Corporation/25.0.2+10-LTS-69"} created with settings MongoClientSettings{readPreference=primary, writeConcern=WriteConcern{w=null, wTimeout=null ms, journal=null}, retryWrites=true, retryReads=true, readConcern=ReadConcern{level=null}, credential=null, transportSettings=null, commandListeners=[], codecRegistry=ProvidersCodecRegistry{codecProviders=[ValueCodecProvider{}, BsonValueCodecProvider{}, DBRefCodecProvider{}, DBObjectCodecProvider{}, DocumentCodecProvider{}, CollectionCodecProvider{}, IterableCodecProvider{}, MapCodecProvider{}, GeoJsonCodecProvider{}, GridFSFileCodecProvider{}, Jsr310CodecProvider{}, JsonObjectCodecProvider{}, BsonCodecProvider{}, com.mongodb.client.model.mql.ExpressionCodecProvider@e10809f, com.mongodb.Jep395RecordCodecProvider@470c2a7a, com.mongodb.KotlinCodecProvider@62b3871, EnumCodecProvider{}]}, loggerSettings=LoggerSettings{maxDocumentLength=1000}, clusterSettings={hosts=[localhost:27017], srvServiceName=mongodb, mode=SINGLE, requiredClusterType=UNKNOWN, requiredReplicaSetName='null', serverSelector='null', clusterListeners='[]', serverSelectionTimeout='30000 ms', localThreshold='15 ms'}, socketSettings=SocketSettings{connectTimeoutMS=10000, readTimeoutMS=0, receiveBufferSize=0, proxySettings=ProxySettings{host=null, port=null, username=null, password=null}}, heartbeatSocketSettings=SocketSettings{connectTimeoutMS=10000, readTimeoutMS=10000, receiveBufferSize=0, proxySettings=ProxySettings{host=null, port=null, username=null, password=null}}, connectionPoolSettings=ConnectionPoolSettings{maxSize=100, minSize=0, maxWaitTimeMS=120000, maxConnectionLifeTimeMS=0, maxConnectionIdleTimeMS=0, maintenanceInitialDelayMS=0, maintenanceFrequencyMS=60000, connectionPoolListeners=[], maxConnecting=2}, serverSettings=ServerSettings{heartbeatFrequencyMS=10000, minHeartbeatFrequencyMS=500, serverMonitoringMode=AUTO, serverListeners='[]', serverMonitorListeners='[]'}, sslSettings=SslSettings{enabled=false, invalidHostNameAllowed=false, context=null}, applicationName='null', compressorList=[], uuidRepresentation=UNSPECIFIED, serverApi=null, autoEncryptionSettings=null, dnsClient=null, inetAddressResolver=null, contextProvider=null, timeoutMS=null}
+2026-04-27T14:33:39.768+05:30  INFO 22648 --- [aegis-backend] [localhost:27017] org.mongodb.driver.cluster               : Monitor thread successfully connected to server with description ServerDescription{address=localhost:27017, type=STANDALONE, cryptd=false, state=CONNECTED, ok=true, minWireVersion=0, maxWireVersion=27, maxDocumentSize=16777216, logicalSessionTimeoutMinutes=30, roundTripTimeNanos=26534700, minRoundTripTimeNanos=0}
+2026-04-27T14:33:41.074+05:30  WARN 22648 --- [aegis-backend] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-27T14:33:41.214+05:30  WARN 22648 --- [aegis-backend] [           main] .s.a.UserDetailsServiceAutoConfiguration : 
+
+Using generated security password: 198bfbd2-ed83-4f38-9d3b-14f38eab47cb
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2026-04-27T14:33:41.221+05:30  INFO 22648 --- [aegis-backend] [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2026-04-27T14:33:41.749+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-04-27T14:33:41.751+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@239c4792]]
+2026-04-27T14:33:41.751+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-04-27T14:33:41.780+05:30  INFO 22648 --- [aegis-backend] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-04-27T14:33:41.787+05:30  INFO 22648 --- [aegis-backend] [           main] com.project.snm.SnmBackendApplication    : Started SnmBackendApplication in 9.321 seconds (process running for 9.858)
+

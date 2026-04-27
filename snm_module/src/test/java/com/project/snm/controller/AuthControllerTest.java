@@ -48,9 +48,17 @@ public class AuthControllerTest {
         
         when(userService.registerUser(any())).thenReturn(user);
 
+        RegisterRequest regReq = new RegisterRequest();
+        regReq.setEmail("test@test.com");
+        regReq.setUsername("testuser");
+        regReq.setAuthProof("proof");
+        regReq.setPublicKeyBase64("pub");
+        regReq.setVaultBlobBase64("vault");
+        regReq.setSaltBase64("salt");
+
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new RegisterRequest())))
+                .content(objectMapper.writeValueAsString(regReq)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.userId").value("user-123"));
     }
@@ -59,9 +67,13 @@ public class AuthControllerTest {
     void testRegisterDuplicate() throws Exception {
         when(userService.registerUser(any())).thenThrow(new ConflictException("Conflict"));
 
+        RegisterRequest regReq = new RegisterRequest();
+        regReq.setEmail("test@test.com");
+        regReq.setUsername("testuser");
+
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new RegisterRequest())))
+                .content(objectMapper.writeValueAsString(regReq)))
                 .andExpect(status().isConflict());
     }
 
@@ -75,7 +87,7 @@ public class AuthControllerTest {
 
         mockMvc.perform(post("/auth/login/challenge")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"emailHmac\": \"hmac\"}"))
+                .content("{\"email\": \"hmac\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.saltBase64").value("salt"))
                 .andExpect(jsonPath("$.vaultBlobBase64").value("vault"));
@@ -87,7 +99,7 @@ public class AuthControllerTest {
 
         mockMvc.perform(post("/auth/login/challenge")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"emailHmac\": \"hmac\"}"))
+                .content("{\"email\": \"hmac\"}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -97,15 +109,17 @@ public class AuthControllerTest {
         user.setUserId("user-123");
         user.setBcryptHash(BCrypt.hashpw("hash", BCrypt.gensalt()));
         user.setPublicKeyBase64("pubkey");
+        user.setUsername("user123");
 
         when(userService.findByEmail("hmac")).thenReturn(user);
         when(jwtService.issueToken("user-123")).thenReturn("fake-jwt");
 
         mockMvc.perform(post("/auth/login/verify")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"emailHmac\": \"hmac\", \"bcryptHash\": \"hash\"}"))
+                .content("{\"email\": \"hmac\", \"authProof\": \"hash\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jwt").value("fake-jwt"))
+                .andExpect(jsonPath("$.username").value("user123"))
                 .andExpect(jsonPath("$.publicKeyBase64").value("pubkey"));
     }
 
@@ -118,7 +132,7 @@ public class AuthControllerTest {
 
         mockMvc.perform(post("/auth/login/verify")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"emailHmac\": \"hmac\", \"bcryptHash\": \"hash\"}"))
+                .content("{\"email\": \"hmac\", \"authProof\": \"hash\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -131,7 +145,7 @@ public class AuthControllerTest {
 
         mockMvc.perform(post("/auth/lookup")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"emailHmac\": \"hmac\"}"))
+                .content("{\"email\": \"hmac\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.publicKeyBase64").value("pubkey"));
     }

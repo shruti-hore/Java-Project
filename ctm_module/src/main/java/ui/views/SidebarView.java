@@ -30,7 +30,9 @@ public class SidebarView extends VBox {
         avatar.setStyle("-fx-background-color: #e2e8f0; -fx-background-radius: 30;");
         
         String userEmail = utils.UserSession.getCurrentUserEmail();
-        String displayUser = (userEmail != null && userEmail.contains("@")) ? userEmail.split("@")[0] : "User";
+        String username = utils.UserSession.getCurrentUserName();
+        String displayUser = (username != null && !username.equals("User")) ? username : 
+                            ((userEmail != null && userEmail.contains("@")) ? userEmail.split("@")[0] : "User");
         
         Label name = new Label(displayUser.toUpperCase());
         name.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #1f2937;");

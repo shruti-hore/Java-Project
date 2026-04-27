@@ -8,20 +8,29 @@ import java.util.Map;
 
 public final class SessionState {
     private final String userId;
+    private final String username;
     private final String jwt;
     private final byte[] authSigningKey;        // 32 bytes
     private final PrivateKey x25519PrivateKey;
     private final byte[] x25519PublicKeyBytes;  // 32 bytes
     private final Map<String, byte[]> teamKeys; // teamId → 32-byte AES key
 
-    public SessionState(String userId, String jwt, byte[] authSigningKey,
+    public SessionState(String userId, String username, String jwt, byte[] authSigningKey,
                         PrivateKey x25519PrivateKey, byte[] x25519PublicKeyBytes) {
         this.userId = userId;
+        this.username = username;
         this.jwt = jwt;
         this.authSigningKey = authSigningKey;
         this.x25519PrivateKey = x25519PrivateKey;
         this.x25519PublicKeyBytes = x25519PublicKeyBytes;
         this.teamKeys = new HashMap<>();
+    }
+
+    public String getUsername() {
+        if (username == null || username.isEmpty() || username.equals("null")) {
+            return userId; // Fallback to email/userId
+        }
+        return username;
     }
 
     public String getJwt() {

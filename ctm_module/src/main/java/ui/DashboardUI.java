@@ -1,5 +1,3 @@
-// to run : mvn clean javafx:run
-
 package ui;
 
 import javafx.application.Application;
@@ -150,12 +148,20 @@ public class DashboardUI extends Application {
         passField.setPromptText("Enter your password");
         passField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
+        Label uLbl = new Label("USERNAME");
+        uLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Enter your username");
+        usernameField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
         confirmPassLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #6b7280;");
         confirmPassField.setPromptText("Confirm your password");
         confirmPassField.setStyle("-fx-background-color: #f9fafb; -fx-text-fill: #1f2937; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
 
         fields.getChildren().addAll(eLbl, emailField, pLbl, passField);
         if (!isLoginMode) {
+            fields.getChildren().add(2, uLbl);
+            fields.getChildren().add(3, usernameField);
             fields.getChildren().addAll(confirmPassLbl, confirmPassField);
         }
 
@@ -170,8 +176,9 @@ public class DashboardUI extends Application {
             loginErrorLabel.setText("");
 
             if (!isLoginMode) {
+                String username = usernameField.getText();
                 char[] confirmPassword = confirmPassField.getText().toCharArray();
-                handleRegistration(email, password, confirmPassword, actionBtn);
+                handleRegistration(email, username, password, confirmPassword, actionBtn);
                 return;
             }
 
@@ -268,6 +275,7 @@ public class DashboardUI extends Application {
                     // Verify with server to get JWT
                     java.util.Map<String, String> verifyResp = httpClient.verify(email, authProof).get();
                     String jwt = verifyResp.get("jwt");
+                    String userId = verifyResp.get("userId");
                     httpClient.setJwt(jwt);
                     
                     // Fetch public key if we didn't store it from challenge (but we should have)
@@ -279,7 +287,11 @@ public class DashboardUI extends Application {
                     
                     byte[] publicKeyBytes = Base64.getDecoder().decode(pendingPublicKeyBase64);
                     
-                    auth.session.SessionState session = secureAuthService.login(email, password, salt, vaultBlob, publicKeyBytes, jwt);
+                    String username = verifyResp.get("username");
+                    auth.session.SessionState session = secureAuthService.login(userId, username, password, salt, vaultBlob, publicKeyBytes, jwt);
+                    
+                    // Update UserSession
+                    utils.UserSession.login(new model.User(email, username));
                     
                     return session;
                 } finally {
@@ -319,9 +331,9 @@ public class DashboardUI extends Application {
         new Thread(task).start();
     }
 
-    private void handleRegistration(String email, char[] password, char[] confirmPassword, Button actionBtn) {
+    private void handleRegistration(String email, String username, char[] password, char[] confirmPassword, Button actionBtn) {
         try {
-            validateInputs(email, new String(password));
+            validateInputs(email, username, new String(password));
             if (!java.util.Arrays.equals(password, confirmPassword)) {
                 loginErrorLabel.setText("Passwords do not match!");
                 return;
@@ -351,6 +363,7 @@ public class DashboardUI extends Application {
 
                     httpClient.register(
                         user.getEmail(),
+                        username,
                         authProof,
                         Base64.getEncoder().encodeToString(user.getPublicKey()),
                         Base64.getEncoder().encodeToString(user.getKeyVault()),
@@ -394,19 +407,25 @@ public class DashboardUI extends Application {
         showWorkspaceSelection();
     }
 
-    private void validateInputs(String email, String password)
+    private void validateInputs(String email, String username, String password)
             throws EmptyFieldException, InvalidEmailException, WeakPasswordException {
         if (email == null || email.trim().isEmpty()) {
             throw new EmptyFieldException("Email cannot be empty");
+        }
+        if (username == null || username.trim().isEmpty()) {
+            throw new EmptyFieldException("Username cannot be empty");
+        }
+        if (!username.matches("^[a-zA-Z0-9_]+$")) {
+            throw new EmptyFieldException("Username must be alphanumeric including _");
         }
         if (password == null || password.isEmpty()) {
             throw new EmptyFieldException("Password cannot be empty");
         }
 
         String trimmedEmail = email.trim();
-        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.com$";
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
         if (!trimmedEmail.matches(emailRegex)) {
-            throw new InvalidEmailException("Enter a valid email address ending in .com");
+            throw new InvalidEmailException("Enter a valid email address");
         }
 
         if (password.length() < 8) {
@@ -464,7 +483,7 @@ public class DashboardUI extends Application {
                 java.security.PublicKey ownerPublicKey = cryptoAdapter.loadPublicKey(ownerPublicKeyBytes);
                 
                 byte[] teamKeyBytes = cryptoAdapter.unwrapTeamKey(
-                    Base64.getDecoder().decode(envelopeBase64),
+                    Base64.getDecoder().decode(envelopeBase64.trim().replace("\"", "")),
                     ownerPublicKey,
                     sessionState.getX25519PrivateKey()
                 );
@@ -722,8 +741,14 @@ public class DashboardUI extends Application {
                 showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
                     taskService.deleteTask(t.getId());
                     taskList.remove(t);
-                    myTasksView.refresh();
+                    if (myTasksView != null) myTasksView.refresh();
+                    if (dashboardView != null) dashboardView.refresh();
+                    if (calendarView != null) calendarView.refresh();
                 });
+            });
+            myTasksView.setOnTaskUpdated(() -> {
+                if (dashboardView != null) dashboardView.refresh();
+                if (calendarView != null) calendarView.refresh();
             });
             calendarView = new ui.views.CalendarView(taskList);
 
@@ -845,11 +870,13 @@ public class DashboardUI extends Application {
                 return;
             }
 
-            client.model.Task newTask = new client.model.Task(null, title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
+            client.model.Task newTask = new client.model.Task(java.util.UUID.randomUUID().toString(), title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
                     sessionState.getUserId(), selectedTeamId);
             taskService.addTask(newTask);
             taskList.add(newTask);
-            myTasksView.refresh();
+            if (myTasksView != null) myTasksView.refresh();
+            if (dashboardView != null) dashboardView.refresh();
+            if (calendarView != null) calendarView.refresh();
             hideOverlay();
         });
 
@@ -897,7 +924,9 @@ public class DashboardUI extends Application {
             t.setDeadline(date);
             t.setPriority(pIn.getValue());
             taskService.updateTask(t);
-            myTasksView.refresh();
+            if (myTasksView != null) myTasksView.refresh();
+            if (dashboardView != null) dashboardView.refresh();
+            if (calendarView != null) calendarView.refresh();
             hideOverlay();
         });
 
