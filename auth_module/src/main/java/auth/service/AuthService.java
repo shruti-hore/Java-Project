@@ -125,6 +125,14 @@ public class AuthService
         }
     }
 
+    TokenService tokenService = new TokenService();
+    String token = tokenService.generateToken(email, authKey);
+
+    SessionState session = new SessionState(email, authKey, privateKey, publicKeyBytes);
+    session.setToken(token);
+
+    return session;
+
     // =========================
     // UTIL
     // =========================
