@@ -9,12 +9,22 @@ import javax.crypto.AEADBadTagException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
-public class AuthService {
-
+/*
+ * SECURITY DESIGN:
+ * - Password is never stored or transmitted
+ * - Master key derived using Argon2
+ * - Vault key derived using HKDF
+ * - Private keys encrypted using AES-GCM
+ * - Server stores only encrypted data (zero-knowledge)
+ * - Session stores authKey for HMAC-based token signing
+ */
+public class AuthService 
+{
     private final CryptoAdapter cryptoAdapter;
     private final UserRepository userRepository;
 
-    public AuthService(CryptoAdapter cryptoAdapter, UserRepository userRepository) {
+    public AuthService(CryptoAdapter cryptoAdapter, UserRepository userRepository) 
+    {
         this.cryptoAdapter = cryptoAdapter;
         this.userRepository = userRepository;
     }
@@ -22,24 +32,27 @@ public class AuthService {
     // =========================
     // REGISTER
     // =========================
-    public User register(String email, char[] password) {
-
-        if (email == null || password == null) {
+    public User register(String email, char[] password) 
+    {
+        if (email == null || password == null) 
+        {
             throw new IllegalArgumentException("Email and password must not be null");
         }
 
-        // Check duplicate user
-        if (userRepository.exists(email)) {
+        // Duplicate check
+        if (userRepository.exists(email)) 
+        {
             throw new RuntimeException("User already exists");
         }
 
-        byte[] salt = generateSalt();
+        byte[] salt = generateSecureSalt();
         byte[] masterKey = null;
         byte[] vaultKey = null;
         byte[] authKey = null;
         byte[] privateKeyBytes = null;
 
-        try {
+        try 
+        {
             // Step 1: Master Key (Argon2)
             masterKey = cryptoAdapter.deriveMasterKey(password, salt);
 
@@ -49,35 +62,36 @@ public class AuthService {
             // Step 3: Auth Signing Key (HKDF)
             authKey = cryptoAdapter.deriveAuthKey(masterKey);
 
-            // Step 4: Generate X25519 key pair
+            // Step 4: Generate key pair
             X25519KeyPair keyPair = cryptoAdapter.generateKeyPair();
 
-            byte[] publicKeyBytes =
-                    cryptoAdapter.extractPublicKeyBytes(keyPair.publicKey());
+            byte[] publicKeyBytes = cryptoAdapter.extractPublicKeyBytes(keyPair.publicKey());
 
             privateKeyBytes = keyPair.privateKeyBytes();
 
-            // Step 5: Encrypt private key into vault (AES-GCM)
-            byte[] vaultBlob =
-                    cryptoAdapter.encryptVault(privateKeyBytes, vaultKey);
+            // Step 5: Encrypt private key (vault)
+            byte[] vaultBlob = cryptoAdapter.encryptVault(privateKeyBytes, vaultKey);
 
-            // Step 6: Build user object
+            // Step 6: Create user
             User user = new User();
             user.setEmail(email);
             user.setPublicKey(publicKeyBytes);
             user.setKeyVault(vaultBlob);
             user.setSalt(salt);
 
-            // Save to repository (DB layer)
+            // Save user
             userRepository.save(user);
 
             return user;
 
-        } catch (Exception e) {
+        } 
+        catch (Exception e) 
+        {
             throw new RuntimeException("Registration failed", e);
-
-        } finally {
-            // ===== SECURITY CLEANUP =====
+        } 
+        finally 
+        {
+            // ===== CLEANUP =====
             if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
             if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
             if (authKey != null) Arrays.fill(authKey, (byte) 0);
@@ -90,12 +104,13 @@ public class AuthService {
     // LOGIN
     // =========================
     public SessionState login(String email, char[] password)
-            throws AEADBadTagException {
-
+            throws AEADBadTagException 
+    {
         User storedUser = userRepository.findByEmail(email);
 
-        if (storedUser == null) {
-            throw new RuntimeException("User not found");
+        if (storedUser == null) 
+        {
+            throw new IllegalArgumentException("Invalid email or user does not exist");
         }
 
         byte[] salt = storedUser.getSalt();
@@ -107,7 +122,8 @@ public class AuthService {
         byte[] authKey = null;
         byte[] privateKeyBytes = null;
 
-        try {
+        try 
+        {
             // Step 1: Master Key
             masterKey = cryptoAdapter.deriveMasterKey(password, salt);
 
@@ -119,14 +135,12 @@ public class AuthService {
 
             // Step 4: Decrypt vault
             privateKeyBytes = cryptoAdapter.decryptVault(vaultBlob, vaultKey);
-            // Wrong password → AEADBadTagException
 
             // Step 5: Load private key
             var privateKey = cryptoAdapter.loadPrivateKey(privateKeyBytes);
 
             // Step 6: Create session
-            SessionState session =
-                    new SessionState(email, authKey, privateKey, publicKeyBytes);
+            SessionState session = new SessionState(email, authKey, privateKey, publicKeyBytes);
 
             // Step 7: Generate token
             TokenService tokenService = new TokenService();
@@ -137,20 +151,44 @@ public class AuthService {
 
             return session;
 
-        } finally {
+        } 
+        finally 
+        {
             // ===== CLEANUP =====
             if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
             if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
             if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
             if (password != null) Arrays.fill(password, '\0');
-            // authKey NOT cleared (stored in session)
         }
+    }
+
+    // =========================
+    // LOGOUT
+    // =========================
+    public void logout(SessionState session) 
+    {
+        if (session != null) 
+        {
+            session.zero();
+        }
+    }
+
+    // =========================
+    // TOKEN VALIDATION
+    // =========================
+    public boolean validateToken(String token, SessionState session) 
+    {
+        if (token == null || session == null) return false;
+
+        TokenService tokenService = new TokenService();
+        return tokenService.validateToken(token, session.getAuthSigningKey());
     }
 
     // =========================
     // UTIL
     // =========================
-    private byte[] generateSalt() {
+    private byte[] generateSecureSalt() 
+    {
         byte[] salt = new byte[16];
         new SecureRandom().nextBytes(salt);
         return salt;
