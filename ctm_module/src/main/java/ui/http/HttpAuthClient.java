@@ -135,6 +135,7 @@ public class HttpAuthClient {
         return post("/workspaces/" + teamId + "/envelopes", body).thenApply(map -> null);
     }
 
+    @SuppressWarnings("unchecked")
     public String fetchWorkspaceCode(String teamId) throws IOException, InterruptedException {
         HttpRequest request = newRequestBuilder("/api/teams/" + teamId + "/code")
             .GET()
@@ -165,6 +166,7 @@ public class HttpAuthClient {
         return builder;
     }
 
+    @SuppressWarnings("unchecked")
     private CompletableFuture<Map<String, String>> post(String path, Object body) {
         try {
             String json = objectMapper.writeValueAsString(body);

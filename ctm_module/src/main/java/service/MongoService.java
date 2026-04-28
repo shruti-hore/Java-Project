@@ -96,6 +96,7 @@ public class MongoService {
         team.setId(doc.getObjectId("_id").toString());
     }
 
+    @SuppressWarnings("unchecked")
     public List<Team> getTeamsForUser(String email) {
         List<Team> list = new ArrayList<>();
         for (Document doc : db.getCollection("teams").find(com.mongodb.client.model.Filters.in("members", email))) {

@@ -9,8 +9,6 @@ import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
-import javafx.scene.chart.*;
-import javafx.geometry.Side;
 import javafx.scene.control.ProgressIndicator;
 import client.model.Task;
 import ui.components.StatCard;
@@ -310,28 +308,6 @@ public class DashboardView extends BorderPane {
         return item;
     }
 
-    private VBox createWorkProgressSection() {
-        VBox section = new VBox(20);
-        Label title = new Label("Recent Tasks");
-        title.getStyleClass().add("text-title");
-        
-        HBox row = new HBox(20);
-        
-        int count = 0;
-        for (Task t : taskList) {
-            if (count >= 3) break;
-            double progress = "DONE".equals(t.getStatus()) ? 1.0 : ("IN_PROGRESS".equals(t.getStatus()) ? 0.5 : 0.0);
-            row.getChildren().add(createProgressCard(t.getTitle(), progress, "Start", t.getDeadline()));
-            count++;
-        }
-        
-        if (count == 0) {
-            row.getChildren().add(new Label("No tasks found. Add a new task to get started!"));
-        }
-        
-        section.getChildren().addAll(title, row);
-        return section;
-    }
 
     private VBox createProgressCard(String name, double progress, String start, String end) {
         VBox card = new VBox(12);

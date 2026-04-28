@@ -106,9 +106,6 @@ public class AuthServiceIntegrationTest {
         PublicKey pubA = cryptoAdapter.loadPublicKey(userA.getPublicKey());
         
         // Perform ECDH: (recoveredPrivA, pubB) vs (privB, pubA)
-        byte[] secret1 = cryptoService.wrapTeamKey(new byte[32], kpB.publicKey(), recoveredPrivA);
-        byte[] secret2 = cryptoService.wrapTeamKey(new byte[32], pubA, kpB.privateKey());
-        
         // Note: wrapTeamKey uses ECDH internally and returns an envelope.
         // To verify secret equality, we should use a more direct method if available,
         // but the schema says "derive shared secret". 

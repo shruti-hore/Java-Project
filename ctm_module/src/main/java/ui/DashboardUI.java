@@ -8,9 +8,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.animation.FadeTransition;
-import javafx.animation.ScaleTransition;
-import javafx.util.Duration;
 import javafx.scene.Node;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
@@ -18,7 +15,6 @@ import java.io.File;
 import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
-import java.util.Map;
 import javax.crypto.AEADBadTagException;
 import java.nio.file.Paths;
 
@@ -26,19 +22,14 @@ import javafx.concurrent.Task;
 import javafx.application.Platform;
 
 import exceptions.*;
-import service.TaskService;
-import service.TeamService;
 import ui.views.DashboardView;
 import ui.views.MyTasksView;
 import ui.views.SidebarView;
 import utils.ValidationUtils;
-import utils.UserSession;
 
 import client.crypto.DocumentCryptoService;
 import client.crypto.NonceCounterStore;
 import client.sync.LocalCache;
-import client.sync.ConflictResolver;
-import client.sync.SyncManager;
 
 public class DashboardUI extends Application {
 

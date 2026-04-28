@@ -15,6 +15,7 @@ public class WorkflowRule {
         this.actionValue = actionValue;
     }
 
+    public String getId() { return id; }
     public String getConditionType() { return conditionType; }
     public String getConditionValue() { return conditionValue; }
     public String getActionType() { return actionType; }

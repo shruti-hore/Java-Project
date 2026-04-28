@@ -74,6 +74,7 @@ public class EncryptedTaskService {
         httpClient.send(request, HttpResponse.BodyHandlers.discarding());
     }
 
+    @SuppressWarnings("unchecked")
     public List<Task> getAllTasksForTeam(String teamId, SessionState session) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
