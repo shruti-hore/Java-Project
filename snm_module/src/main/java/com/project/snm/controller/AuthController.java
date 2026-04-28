@@ -1,79 +1,82 @@
 package com.project.snm.controller;
 
-import com.project.snm.dto.*;
-import com.project.snm.exception.NotFoundException;
-import com.project.snm.model.mysql.UserRecord;
-import com.project.snm.security.JwtService;
 import com.project.snm.service.UserService;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
 
+/**
+ * Controller for Auth related endpoints.
+ * Simplified for Phase 1 rebuild.
+ */
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final UserService userService;
-    private final JwtService jwtService;
+    @Autowired
+    private UserService userService;
 
-    @Value("${server.pepper}")
-    private String pepper;
-
-    public AuthController(UserService userService, JwtService jwtService) {
-        this.userService = userService;
-        this.jwtService = jwtService;
-    }
-
+    /**
+     * POST /auth/register
+     * Receives user registration data and saves to DB.
+     */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-        // Step 4: Register user using provided emailHmac
-        UserRecord user = userService.registerUser(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("userId", user.getUserId()));
-    }
-
-    @PostMapping("/login/challenge")
-    public ResponseEntity<LoginChallengeResponse> challenge(@RequestBody LoginChallengeRequest request) {
-        // Step 4: Return salt and vault blob for the given emailHmac
-        UserRecord user = userService.findByEmailHmac(request.getEmailHmac());
-        return ResponseEntity.ok(new LoginChallengeResponse(user.getSaltBase64(), user.getVaultBlobBase64()));
-    }
-
-    @PostMapping("/login/verify")
-    public ResponseEntity<?> verify(@RequestBody LoginVerifyRequest request) {
+    public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
         try {
-            // Step 4: Look up user by emailHmac
-            UserRecord user = userService.findByEmailHmac(request.getEmailHmac());
-            
-            // Step 4: Verify BCrypt hash
-            if (BCrypt.checkpw(request.getBcryptHash(), user.getBcryptHash())) {
-                String token = jwtService.issueToken(user.getUserId());
-                return ResponseEntity.ok(new LoginVerifyResponse(token, user.getUserId(), user.getPublicKeyBase64()));
-            }
+            String email = request.get("email");
+            String username = request.get("username");
+            String authProof = request.get("password"); // raw auth proof from frontend
+            String salt = request.get("salt");
+            String vaultBlob = request.get("vault_blob");
+
+            userService.registerUser(email, username, authProof, salt, vaultBlob);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("message", "User registered successfully"));
+
         } catch (Exception e) {
-            // Fall through to 401
+            if (e.getMessage().startsWith("CONFLICT")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", e.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Registration failed: " + e.getMessage()));
         }
-        
-        // Step 4: Do not distinguish "user not found" from "wrong password"
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
-    @PostMapping("/lookup")
-    public ResponseEntity<?> lookup(@RequestBody Map<String, String> body) {
-        // Step 6: Public key lookup (requires JWT)
-        String emailHmac = body.get("emailHmac");
-        if (emailHmac == null) {
-            return ResponseEntity.badRequest().build();
-        }
+    /**
+     * POST /auth/login/challenge
+     * Phase 1: Fetch user salt and vault blob.
+     */
+    @PostMapping("/login/challenge")
+    public ResponseEntity<?> challenge(@RequestBody Map<String, String> request) {
+        String identifier = request.get("identifier");
+        return userService.fetchChallenge(identifier)
+                .map(user -> ResponseEntity.ok(Map.of(
+                        "salt", user.getSalt(),
+                        "vault_blob", user.getVaultBlob()
+                )))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 
+    /**
+     * POST /auth/login/verify
+     * Phase 2: Verify auth proof and return JWT.
+     */
+    @PostMapping("/login/verify")
+    public ResponseEntity<?> verify(@RequestBody Map<String, String> request) {
         try {
-            UserRecord user = userService.findByEmailHmac(emailHmac);
-            return ResponseEntity.ok(Map.of("publicKeyBase64", user.getPublicKeyBase64()));
-        } catch (NotFoundException e) {
-            return ResponseEntity.notFound().build();
+            String identifier = request.get("identifier");
+            String authProof = request.get("auth_proof");
+
+            String jwt = userService.verifyLogin(identifier, authProof);
+            return ResponseEntity.ok(Map.of("token", jwt));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }
