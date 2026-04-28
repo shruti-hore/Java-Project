@@ -11,14 +11,12 @@ import service.TaskService;
 import java.util.function.Consumer;
 
 public class TaskCard extends VBox {
-    private Task task;
     private TaskService taskService;
     private Runnable onAction;
     private Consumer<Task> onEdit;
     private Consumer<Task> onDelete;
 
     public TaskCard(Task t, TaskService service, Runnable refresh, Consumer<Task> editAction, Consumer<Task> deleteAction) {
-        this.task = t;
         this.taskService = service;
         this.onAction = refresh;
         this.onEdit = editAction;

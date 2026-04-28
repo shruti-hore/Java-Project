@@ -186,7 +186,7 @@ public class DashboardController {
             protected Void call() throws Exception {
                 for (HttpAuthClient.DocumentMeta meta : metadata) {
                     EncryptedDocumentPayload payload = httpClient.fetchDocument(meta.documentUuid());
-                    client.model.Task taskObj = encryptedTaskService.loadTask(meta.documentUuid(), teamId, payload);
+                    encryptedTaskService.loadTask(meta.documentUuid(), teamId, payload);
                     Platform.runLater(() -> {
                         // Replace placeholder stub with real task card content
                     });
@@ -212,7 +212,7 @@ public class DashboardController {
             protected Void call() throws Exception {
                 for (HttpAuthClient.DocumentMeta meta : metadata) {
                     if (isCancelled()) break;
-                    EncryptedDocumentPayload payload = httpClient.fetchDocument(meta.documentUuid());
+                    httpClient.fetchDocument(meta.documentUuid());
                     // Update local cache only
                     // localCache.cacheDocument(meta.documentUuid(), teamId, meta.versionSeq(), payload);
                 }

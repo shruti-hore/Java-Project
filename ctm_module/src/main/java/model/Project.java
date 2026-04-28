@@ -21,6 +21,10 @@ public class Project {
         return tasks;
     }
 
+    public String getProjectId() {
+        return projectId;
+    }
+
     public String getProjectName() {
         return projectName;
     }

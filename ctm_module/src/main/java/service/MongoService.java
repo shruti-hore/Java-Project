@@ -139,27 +139,15 @@ public class MongoService {
         team.setId(doc.getObjectId("_id").toString());
     }
 
-    public void inviteToTeam(String teamId, String email) {
-        MongoCollection<Document> teams = db.getCollection("teams");
-        teams.updateOne(
-                eq("_id", new ObjectId(teamId)),
-                com.mongodb.client.model.Updates.addToSet("members", email));
-    }
-
-    public List<model.Team> getTeamsForUser(String email) {
-        List<model.Team> list = new ArrayList<>();
-        MongoCollection<Document> teams = db.getCollection("teams");
-
-        for (Document doc : teams.find(com.mongodb.client.model.Filters.in("members", email))) {
-            model.Team t = new model.Team(
-                    doc.getObjectId("_id").toString(),
-                    doc.getString("name"),
-                    doc.getString("ownerId"));
-            List<String> m = (List<String>) doc.get("members");
-            if (m != null) {
-                for (String member : m)
-                    t.addMember(member);
-            }
+    @SuppressWarnings("unchecked")
+    public List<Team> getTeamsForUser(String email) {
+        List<Team> list = new ArrayList<>();
+        for (Document doc : db.getCollection("teams").find(com.mongodb.client.model.Filters.in("members", email))) {
+            String ownerUsername = doc.getString("ownerUsername");
+            if (ownerUsername == null) ownerUsername = doc.getString("ownerId");
+            Team t = new Team(doc.getObjectId("_id").toString(), doc.getString("name"), doc.getString("ownerId"), ownerUsername);
+            List<String> members = (List<String>) doc.get("members");
+            if (members != null) for (String m : members) t.addMember(m);
             list.add(t);
         }
         return list;

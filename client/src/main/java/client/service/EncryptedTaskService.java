@@ -36,68 +36,108 @@ public class EncryptedTaskService {
         this.serverBaseUrl = serverBaseUrl;
     }
 
-    public void saveTask(Task task, String teamId, short teamKeyVersion, int currentVersionSeq) throws IOException, InterruptedException {
-        if (task.getId() == null) {
-            throw new IllegalArgumentException("Task UUID must not be null for encryption");
-        }
+     public void saveTask(Task task, String teamId, short teamKeyVersion, int currentVersionSeq) throws IOException, InterruptedException {
+         if (task.getId() == null) {
+             throw new IllegalArgumentException("Task UUID must not be null for encryption");
+         }
 
-        // 1. Build taskFields map from task object
-        Map<String, Object> taskFields = new HashMap<>();
-        taskFields.put("title", task.getTitle());
-        taskFields.put("description", task.getDescription());
-        taskFields.put("deadline", task.getDeadline());
-        taskFields.put("priority", task.getPriority());
-        taskFields.put("assigneeUserId", task.getUserId());
-        taskFields.put("status", task.getStatus());
-        taskFields.put("completed", task.isCompleted());
+         // 1. Build taskFields map from task object
+         Map<String, Object> taskFields = new HashMap<>();
+         taskFields.put("title", task.getTitle());
+         taskFields.put("description", task.getDescription());
+         taskFields.put("deadline", task.getDeadline());
+         taskFields.put("priority", task.getPriority());
+         taskFields.put("assigneeUserId", task.getUserId());
+         taskFields.put("status", task.getStatus());
+         taskFields.put("completed", task.isCompleted());
 
-        // 2. teamKey <- session.getTeamKey(teamId)
-        byte[] teamKey = session.getTeamKey(teamId);
+         // 2. teamKey <- session.getTeamKey(teamId)
+         byte[] teamKey = session.getTeamKey(teamId);
 
-        // 3. payload <- cryptoService.encrypt(task.getId(), teamKeyVersion, currentVersionSeq, teamKey, taskFields)
-        EncryptedDocumentPayload payload = cryptoService.encrypt(task.getId(), teamKeyVersion, currentVersionSeq, teamKey, taskFields);
+         // 3. payload <- cryptoService.encrypt(task.getId(), teamKeyVersion, currentVersionSeq, teamKey, taskFields)
+         EncryptedDocumentPayload payload = cryptoService.encrypt(task.getId(), teamKeyVersion, currentVersionSeq, teamKey, taskFields);
 
-        // 4. POST payload to /documents/{task.getId()}/versions
-        // Note: For now, we wrap the payload in a request body suitable for the server Step 4
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("teamId", teamId);
-        requestBody.put("ciphertextBase64", payload.ciphertextBase64());
-        requestBody.put("nonceBase64", payload.nonceBase64());
-        requestBody.put("aadBase64", payload.aadBase64());
-        requestBody.put("expectedVersionSeq", currentVersionSeq);
-        // vectorClock is omitted for now or handled separately
+         // 4. POST payload to /documents/{task.getId()}/versions
+         // Note: For now, we wrap the payload in a request body suitable for the server Step 4
+         Map<String, Object> requestBody = new HashMap<>();
+         requestBody.put("teamId", teamId);
+         requestBody.put("ciphertextBase64", payload.ciphertextBase64());
+         requestBody.put("nonceBase64", payload.nonceBase64());
+         requestBody.put("aadBase64", payload.aadBase64());
+         requestBody.put("expectedVersionSeq", currentVersionSeq);
+         // vectorClock is omitted for now or handled separately
 
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
+         String jsonBody = objectMapper.writeValueAsString(requestBody);
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(serverBaseUrl + "/documents/" + task.getId() + "/versions"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                .build();
+         HttpRequest request = HttpRequest.newBuilder()
+                 .uri(URI.create(serverBaseUrl + "/documents/" + task.getId() + "/versions"))
+                 .header("Content-Type", "application/json")
+                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                 .build();
 
-        // The actual implementation will be expanded in Step 8 (SyncManager)
-        // For Step 3, we just perform the write.
-        httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-    }
+         // The actual implementation will be expanded in Step 8 (SyncManager)
+         // For Step 3, we just perform the write.
+         httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+     }
 
-    public Task loadTask(String docUuid, String teamId, EncryptedDocumentPayload payload) throws AEADBadTagException, IOException {
-        // 1. teamKey <- session.getTeamKey(teamId)
-        byte[] teamKey = session.getTeamKey(teamId);
+     @SuppressWarnings("unchecked")
+     public List<Task> getAllTasksForTeam(String teamId, SessionState session) {
+         try {
+             HttpRequest request = HttpRequest.newBuilder()
+                     .uri(URI.create(serverBaseUrl + "/workspaces/" + teamId + "/documents"))
+                     .header("Authorization", "Bearer " + session.getJwt())
+                     .GET()
+                     .build();
 
-        // 2. fields <- cryptoService.decrypt(docUuid, teamKey, payload)
-        Map<String, Object> fields = cryptoService.decrypt(docUuid, teamKey, payload);
+             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+             List<Map<String, Object>> docs = objectMapper.readValue(response.body(), new TypeReference<>() {});
+             List<Task> tasks = new ArrayList<>();
 
-        // 3. Reconstruct Task from fields map and return
-        return new Task(
-                docUuid,
-                (String) fields.get("title"),
-                (String) fields.get("description"),
-                (String) fields.get("deadline"),
-                (Boolean) fields.get("completed"),
-                (String) fields.get("status"),
-                (String) fields.get("priority"),
-                (String) fields.get("assigneeUserId"),
-                teamId
-        );
-    }
-}
+             for (Map<String, Object> doc : docs) {
+                 String docUuid = (String) doc.get("id");
+                 Map<String, Object> payloadMap = (Map<String, Object>) doc.get("latestPayload");
+                 if (payloadMap == null) continue;
+
+                 EncryptedDocumentPayload payload = new EncryptedDocumentPayload(
+                         (String) payloadMap.get("ciphertextBase64"),
+                         (String) payloadMap.get("nonceBase64"),
+                         (String) payloadMap.get("aadBase64"),
+                         0, // counter not needed for decryption
+                         (Integer) payloadMap.get("versionSeq")
+                 );
+
+                 try {
+                     Task t = loadTask(docUuid, teamId, payload);
+                     t.setCurrentVersionSeq(payload.versionSeq());
+                     tasks.add(t);
+                 } catch (AEADBadTagException e) {
+                     // Skip documents we can't decrypt
+                 }
+             }
+             return tasks;
+         } catch (Exception e) {
+             return new ArrayList<>();
+         }
+     }
+
+     public Task loadTask(String docUuid, String teamId, EncryptedDocumentPayload payload) throws AEADBadTagException, IOException {
+         // 1. teamKey <- session.getTeamKey(teamId)
+         byte[] teamKey = session.getTeamKey(teamId);
+
+         // 2. fields <- cryptoService.decrypt(docUuid, teamKey, payload)
+         Map<String, Object> fields = cryptoService.decrypt(docUuid, teamKey, payload);
+
+         // 3. Reconstruct Task from fields map and return
+         return new Task(
+                 docUuid,
+                 (String) fields.get("title"),
+                 (String) fields.get("description"),
+                 (String) fields.get("deadline"),
+                 (Boolean) fields.get("completed"),
+                 (String) fields.get("status"),
+                 (String) fields.get("priority"),
+                 (String) fields.get("assigneeUserId"),
+                 teamId
+         );
+     }
+ }
