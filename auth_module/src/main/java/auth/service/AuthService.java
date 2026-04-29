@@ -19,7 +19,6 @@ public class AuthService {
         byte[] salt = generateSalt();
         byte[] masterKey = null;
         byte[] vaultKey = null;
-        byte[] authKey = null;
         X25519KeyPair keyPair = null;
         byte[] privateKeyBytes = null;
         byte[] publicKeyBytes = null;
@@ -31,9 +30,6 @@ public class AuthService {
 
             // Step 2: Vault Key
             vaultKey = cryptoAdapter.deriveVaultKey(masterKey);
-
-            // Step 3: Auth Signing Key
-            authKey = cryptoAdapter.deriveAuthKey(masterKey);
 
             // Step 4: Key Pair
             keyPair = cryptoAdapter.generateKeyPair();
@@ -58,7 +54,6 @@ public class AuthService {
             // ✅ Secure cleanup (VERY IMPORTANT)
             if (masterKey != null) Arrays.fill(masterKey, (byte) 0);
             if (vaultKey != null) Arrays.fill(vaultKey, (byte) 0);
-            if (authKey != null) Arrays.fill(authKey, (byte) 0);
             if (privateKeyBytes != null) Arrays.fill(privateKeyBytes, (byte) 0);
             if (password != null) Arrays.fill(password, '0');
         }
