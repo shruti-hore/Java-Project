@@ -53,22 +53,21 @@ public class SidebarView extends VBox {
             Label trackingNav = createNavItem("Tracking", "KANBAN");
             Label projectsNav = createNavItem("Projects", "PROJECTS");
             Label historyNav = createNavItem("Work History", "HISTORY");
-            Label inboxNav = createNavItem("Inbox", "INBOX");
             
             navBox.getChildren().add(1, dashboardNav);
             navBox.getChildren().add(2, trackingNav);
             navBox.getChildren().add(3, projectsNav);
             navBox.getChildren().add(4, historyNav);
-            navBox.getChildren().add(5, inboxNav);
         }
 
         Label toolsHeader = new Label("TOOLS");
         toolsHeader.setStyle("-fx-text-fill: #9ca3af; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 30 20 10 20;");
         
         Label settingsNav = createNavItem("Settings", "SETTINGS");
+        Label inboxNav = createNavItem("Inbox", "INBOX");
         Label logoutNav = createNavItem("Logout", "LOGOUT");
 
-        navBox.getChildren().addAll(toolsHeader, settingsNav, logoutNav);
+        navBox.getChildren().addAll(toolsHeader, settingsNav, inboxNav, logoutNav);
 
         addTaskBtn = new Button("+ Add New Task");
         addTaskBtn.getStyleClass().add("button-primary");

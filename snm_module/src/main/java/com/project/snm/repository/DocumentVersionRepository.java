@@ -13,4 +13,8 @@ public interface DocumentVersionRepository extends JpaRepository<DocumentVersion
 
     @Query("SELECT v FROM DocumentVersion v WHERE v.teamId = :teamId AND v.versionSeq = (SELECT MAX(v2.versionSeq) FROM DocumentVersion v2 WHERE v2.documentUuid = v.documentUuid)")
     List<DocumentVersion> findLatestVersionsByTeamId(String teamId);
+
+    @Modifying
+    @org.springframework.transaction.annotation.Transactional
+    void deleteByDocumentUuid(String documentUuid);
 }

@@ -18,26 +18,32 @@ public class HttpAuthClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private String jwt;
 
-    // --- MOCK INBOX STATE ---
-    public record InboxItem(String id, String type, String usernameOrEmail, String teamId) {}
-    private final java.util.List<InboxItem> mockInbox = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
-
+    public record InboxItem(String id, String type, String senderName, String teamName, String teamId, String timestamp) {}
+    
     public CompletableFuture<List<InboxItem>> fetchInbox() {
-        return CompletableFuture.supplyAsync(() -> new java.util.ArrayList<>(mockInbox));
+        return get("/api/inbox", List.class).thenApply(list -> {
+            try {
+                String json = objectMapper.writeValueAsString(list);
+                return objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<List<InboxItem>>() {});
+            } catch (Exception e) {
+                return java.util.Collections.emptyList();
+            }
+        });
     }
 
     public CompletableFuture<Void> respondToInbox(String id, boolean accept) {
-        return CompletableFuture.supplyAsync(() -> {
-            mockInbox.removeIf(i -> i.id().equals(id));
-            return null;
-        });
+        Map<String, Boolean> body = Map.of("accept", accept);
+        return post("/api/inbox/" + id + "/respond", body).thenApply(map -> null);
     }
 
     public CompletableFuture<Void> sendInvite(String teamId, String email) {
-        return CompletableFuture.supplyAsync(() -> {
-            mockInbox.add(new InboxItem(java.util.UUID.randomUUID().toString(), "INVITE", email, teamId));
-            return null;
-        });
+        Map<String, String> body = Map.of("teamId", teamId, "email", email);
+        return post("/api/inbox/invite", body).thenApply(map -> null);
+    }
+
+    public CompletableFuture<Void> requestToJoin(String inviteCode) {
+        Map<String, String> body = Map.of("inviteCode", inviteCode);
+        return post("/api/inbox/request", body).thenApply(map -> null);
     }
 
     public CompletableFuture<Void> removeMember(String teamId, String username) {
@@ -130,10 +136,9 @@ public class HttpAuthClient {
     public record CreateWorkspaceResponse(String teamId, String workspaceCode) {}
 
     public CompletableFuture<JoinWorkspaceResponse> joinWorkspace(String workspaceCode) {
-        return CompletableFuture.supplyAsync(() -> {
-            mockInbox.add(new InboxItem(java.util.UUID.randomUUID().toString(), "JOIN REQUEST", "user", "team-" + workspaceCode));
-            return new JoinWorkspaceResponse("mock-id", "mock-name", "PENDING");
-        });
+        return requestToJoin(workspaceCode).thenApply(v -> 
+            new JoinWorkspaceResponse("pending", "Request Sent", "PENDING")
+        );
     }
 
     public CompletableFuture<CreateWorkspaceResponse> createWorkspace(String name, String ownerPublicKeyBase64) {
@@ -188,29 +193,34 @@ public class HttpAuthClient {
     }
 
     private CompletableFuture<Map<String, String>> post(String path, Object body) {
+        return post(path, body, Map.class).thenApply(m -> m == null ? Map.of() : (Map<String, String>)m);
+    }
+
+    private <T> CompletableFuture<T> get(String path, Class<T> responseType) {
+        HttpRequest request = newRequestBuilder(path).GET().build();
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply(response -> {
+                if (response.statusCode() >= 400) throw new RuntimeException("HTTP " + response.statusCode());
+                try { return objectMapper.readValue(response.body(), responseType); }
+                catch (Exception e) { throw new RuntimeException(e); }
+            });
+    }
+
+    private <T> CompletableFuture<T> post(String path, Object body, Class<T> responseType) {
         try {
             String json = objectMapper.writeValueAsString(body);
             HttpRequest request = newRequestBuilder(path)
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
-
             return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(response -> {
-                    if (response.statusCode() >= 400) {
-                        throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
-                    }
+                    if (response.statusCode() >= 400) throw new RuntimeException("HTTP " + response.statusCode());
                     try {
-                        String responseBody = response.body();
-                        if (responseBody == null || responseBody.isBlank()) {
-                            return java.util.Map.of();
-                        }
-                        return objectMapper.readValue(responseBody, Map.class);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to parse response", e);
-                    }
+                        String rb = response.body();
+                        if (rb == null || rb.isBlank()) return null;
+                        return objectMapper.readValue(rb, responseType);
+                    } catch (Exception e) { throw new RuntimeException(e); }
                 });
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        } catch (Exception e) { return CompletableFuture.failedFuture(e); }
     }
 }

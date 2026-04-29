@@ -64,6 +64,7 @@ public class DashboardUI extends Application {
     private MyTasksView myTasksView;
     private ui.views.CalendarView calendarView;
     private ui.views.WorkspaceView workspaceView;
+    private ui.views.InboxView inboxView;
     private String selectedTeamId;
     
     private boolean isLoginMode = true;
@@ -217,10 +218,6 @@ public class DashboardUI extends Application {
         Task<java.util.Map<String, String>> task = new Task<>() {
             @Override
             protected java.util.Map<String, String> call() throws Exception {
-                // Step 1: In a real system, we'd HMAC the email. For now, we use the plaintext email
-                // to match the server implementation we worked on.
-                // String emailHmac = cryptoAdapter.computeStableEmailHash(email); 
-                // Actually, the server expects the plaintext email for the challenge in Part 6
                 return httpClient.challenge(email).get();
             }
         };
@@ -241,7 +238,7 @@ public class DashboardUI extends Application {
 
         task.setOnFailed(e -> {
             setLoginLoading(false, actionBtn);
-            loginErrorLabel.setText("No account found or server error.");
+            loginErrorLabel.setText("Incorrect email or password.");
             loginErrorLabel.setStyle("-fx-text-fill: #ef4444;");
         });
 
@@ -270,9 +267,6 @@ public class DashboardUI extends Application {
                     masterKey = cryptoAdapter.deriveMasterKey(passwordClone, salt);
                     String authProof = cryptoAdapter.computeMasterKeyProof(masterKey);
                     
-                    System.out.println("[DEBUG] Login Phase 2: computed authProof: " + authProof);
-                    System.out.println("[DEBUG] Login Phase 2: using saltBase64: " + pendingSaltBase64);
-
                     // Verify with server to get JWT
                     java.util.Map<String, String> verifyResp = httpClient.verify(email, authProof).get();
                     String jwt = verifyResp.get("jwt");
@@ -321,8 +315,8 @@ public class DashboardUI extends Application {
             loginPhase = LoginPhase.EMAIL_ENTRY;
             actionBtn.setText("Sign In");
             
-            if (ex.getCause() instanceof AEADBadTagException || ex instanceof AEADBadTagException) {
-                loginErrorLabel.setText("Incorrect password.");
+            if (ex.getCause() instanceof javax.crypto.AEADBadTagException || ex instanceof javax.crypto.AEADBadTagException || (ex.getMessage() != null && ex.getMessage().contains("401"))) {
+                loginErrorLabel.setText("Incorrect email or password.");
             } else {
                 loginErrorLabel.setText("Login failed: " + ex.getMessage());
             }
@@ -359,9 +353,6 @@ public class DashboardUI extends Application {
                     masterKey = cryptoAdapter.deriveMasterKey(passwordClone, user.getSalt());
                     String authProof = cryptoAdapter.computeMasterKeyProof(masterKey);
                     
-                    System.out.println("[DEBUG] Registration: computed authProof: " + authProof);
-                    System.out.println("[DEBUG] Registration: using saltBase64: " + Base64.getEncoder().encodeToString(user.getSalt()));
-
                     httpClient.register(
                         user.getEmail(),
                         username,
@@ -389,7 +380,12 @@ public class DashboardUI extends Application {
 
         task.setOnFailed(e -> {
             setLoginLoading(false, actionBtn);
-            loginErrorLabel.setText("Registration failed: " + task.getException().getMessage());
+            String msg = task.getException().getMessage();
+            if (msg != null && msg.contains("409")) {
+                loginErrorLabel.setText("Account with this email or username already exists.");
+            } else {
+                loginErrorLabel.setText("Registration failed: " + msg);
+            }
             loginErrorLabel.setStyle("-fx-text-fill: #ef4444;");
         });
 
@@ -461,7 +457,7 @@ public class DashboardUI extends Application {
                 this::handleJoinTeam
             );
 
-            if (mainRoot == null) {
+            if (mainRoot == null || selectedTeamId != null) {
                 initializeMainApp(null);
             }
             mainRoot.setCenter(workspaceView);
@@ -727,7 +723,8 @@ public class DashboardUI extends Application {
                     loadGlobalCalendar();
                     break;
                 case "INBOX":
-                    showInboxView();
+                    if (inboxView == null) inboxView = new ui.views.InboxView(httpClient);
+                    mainRoot.setCenter(inboxView);
                     break;
                 case "LOGOUT": handleLogout(); break;
                 default: showError("Module coming soon!");
@@ -743,8 +740,16 @@ public class DashboardUI extends Application {
             dashboardView = new DashboardView(taskList, selectedTeam);
             myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, (client.model.Task t) -> {
                 showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
-                    taskService.deleteTask(t.getId());
-                    refreshTaskData();
+                    javafx.concurrent.Task<Void> deleteTask = new javafx.concurrent.Task<>() {
+                        @Override
+                        protected Void call() throws Exception {
+                            taskService.deleteTask(t.getId());
+                            return null;
+                        }
+                    };
+                    deleteTask.setOnSucceeded(ev -> refreshTaskData());
+                    deleteTask.setOnFailed(ev -> showError("Failed to delete task"));
+                    new Thread(deleteTask).start();
                 });
             });
             myTasksView.setOnTaskUpdated(this::refreshTaskData);
@@ -1064,17 +1069,25 @@ public class DashboardUI extends Application {
     }
 
     private void handleLogout() {
-        if (syncManager != null) {
-            syncManager.stop();
-            syncManager = null;
-        }
-        if (sessionState != null) {
-            sessionState.zero();
-            sessionState = null;
-        }
+        // Run cleanup in background to keep UI responsive
+        final client.sync.SyncManager sm = syncManager;
+        final auth.session.SessionState ss = sessionState;
+        
+        syncManager = null;
+        sessionState = null;
+        inboxView = null; // Clear inbox view cache
+        
         if (httpClient != null) {
             httpClient.setJwt(null);
         }
+
+        Thread cleanup = new Thread(() -> {
+            if (sm != null) sm.stop();
+            if (ss != null) ss.zero();
+        });
+        cleanup.setDaemon(true);
+        cleanup.start();
+
         showLoginScreen();
     }
 
@@ -1224,65 +1237,7 @@ public class DashboardUI extends Application {
         showOverlay(form);
     }
 
-    private void showInboxView() {
-        VBox inbox = new VBox(20);
-        inbox.setPadding(new Insets(30));
-        inbox.setStyle("-fx-background-color: #f5f6fa;");
-
-        Label title = new Label("INBOX");
-        title.setStyle("-fx-text-fill: #1f2937; -fx-font-size: 24px; -fx-font-weight: bold;");
-
-        VBox list = new VBox(10);
-        
-        Task<List<ui.http.HttpAuthClient.InboxItem>> fetch = new Task<>() {
-            @Override protected List<ui.http.HttpAuthClient.InboxItem> call() throws Exception {
-                return httpClient.fetchInbox().get();
-            }
-        };
-        fetch.setOnSucceeded(e -> {
-            for (ui.http.HttpAuthClient.InboxItem item : fetch.getValue()) {
-                HBox row = new HBox(15);
-                row.setAlignment(Pos.CENTER_LEFT);
-                row.setStyle("-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);");
-                
-                Label info = new Label(item.type() + " from " + item.usernameOrEmail());
-                info.setStyle("-fx-font-weight: bold; -fx-text-fill: #374151;");
-                
-                Region spacer = new Region();
-                HBox.setHgrow(spacer, Priority.ALWAYS);
-                
-                Button accept = new Button("Accept");
-                accept.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-                Button reject = new Button("Reject");
-                reject.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-                
-                accept.setOnAction(a -> {
-                    Task<Void> t = new Task<>() {
-                        @Override protected Void call() throws Exception { httpClient.respondToInbox(item.id(), true).get(); return null; }
-                    };
-                    t.setOnSucceeded(s -> showInboxView());
-                    new Thread(t).start();
-                });
-                reject.setOnAction(a -> {
-                    Task<Void> t = new Task<>() {
-                        @Override protected Void call() throws Exception { httpClient.respondToInbox(item.id(), false).get(); return null; }
-                    };
-                    t.setOnSucceeded(s -> showInboxView());
-                    new Thread(t).start();
-                });
-                
-                row.getChildren().addAll(info, spacer, accept, reject);
-                list.getChildren().add(row);
-            }
-            if (list.getChildren().isEmpty()) {
-                list.getChildren().add(new Label("Inbox is empty."));
-            }
-        });
-        new Thread(fetch).start();
-        
-        inbox.getChildren().addAll(title, new ScrollPane(list));
-        mainRoot.setCenter(inbox);
-    }
+    // Removed legacy showInboxView() method as it is now handled by ui.views.InboxView
 
 
     public static void main(String[] args) {

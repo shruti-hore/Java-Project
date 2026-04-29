@@ -10,8 +10,7 @@ public class WorkflowService {
     private List<WorkflowRule> rules = new ArrayList<>();
 
     public WorkflowService() {
-        // Sample rule: If deadline is today, set priority to High
-        rules.add(new WorkflowRule("1", "DEADLINE_IS_TODAY", "", "SET_PRIORITY", "High"));
+        // No automatic rules to allow user priority selection
     }
 
     public void applyRules(Task task) {

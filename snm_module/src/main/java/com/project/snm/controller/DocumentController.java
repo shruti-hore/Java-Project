@@ -116,15 +116,16 @@ public class DocumentController {
         
         List<Map<String, Object>> responses = latests.stream()
                 .map(v -> {
-                    try {
-                        Map<String, Object> docMap = new HashMap<>();
-                        docMap.put("id", v.getDocumentUuid());
-                        docMap.put("latestPayload", mapToResponse(v));
+                    Map<String, Object> docMap = new HashMap<>();
+                    docMap.put("id", v.getDocumentUuid());
+                    DocumentVersionResponse payload = mapToResponse(v);
+                    if (payload != null) {
+                        docMap.put("latestPayload", payload);
                         return docMap;
-                    } catch (tools.jackson.core.JacksonException e) {
-                        throw new RuntimeException(e);
                     }
+                    return null;
                 })
+                .filter(java.util.Objects::nonNull)
                 .toList();
                 
         return ResponseEntity.ok(responses);
@@ -140,15 +141,29 @@ public class DocumentController {
         return ResponseEntity.ok(mapToResponse(version));
     }
 
-    private DocumentVersionResponse mapToResponse(DocumentVersion version) throws tools.jackson.core.JacksonException {
-        String ciphertext = blobService.getBlob(version.getBlobId()).getEncryptedContent();
-        
-        return DocumentVersionResponse.builder()
-                .versionSeq(version.getVersionSeq())
-                .ciphertextBase64(ciphertext)
-                .nonceBase64(version.getNonceBase64())
-                .aadBase64(version.getAadBase64())
-                .vectorClock(objectMapper.readValue(version.getVectorClockJson(), Map.class))
-                .build();
+    @DeleteMapping("/{documentUuid}")
+    @Transactional
+    public ResponseEntity<?> deleteDocument(@PathVariable String documentUuid) {
+        documentVersionRepository.deleteByDocumentUuid(documentUuid);
+        // In a real system, we'd also delete the blobs from MongoDB.
+        // For now, removing metadata versions effectively "deletes" the doc from the team view.
+        return ResponseEntity.ok().build();
+    }
+
+    private DocumentVersionResponse mapToResponse(DocumentVersion version) {
+        try {
+            String ciphertext = blobService.getBlob(version.getBlobId()).getEncryptedContent();
+            
+            return DocumentVersionResponse.builder()
+                    .versionSeq(version.getVersionSeq())
+                    .ciphertextBase64(ciphertext)
+                    .nonceBase64(version.getNonceBase64())
+                    .aadBase64(version.getAadBase64())
+                    .vectorClock(objectMapper.readValue(version.getVectorClockJson(), Map.class))
+                    .build();
+        } catch (Exception e) {
+            System.err.println("Error mapping document version to response: " + e.getMessage());
+            return null; // Skip this version if it's broken
+        }
     }
 }

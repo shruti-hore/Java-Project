@@ -106,6 +106,11 @@ public class WorkspaceService {
                 .orElse("User");
     }
 
+    public Team joinWorkspaceByCodeOnly(String workspaceCode) {
+        return teamRepository.findByWorkspaceCode(workspaceCode)
+                .orElseThrow(() -> new NotFoundException("Workspace not found for code: " + workspaceCode));
+    }
+
     private String generateWorkspaceCode() {
         byte[] bytes = new byte[6];
         new SecureRandom().nextBytes(bytes);

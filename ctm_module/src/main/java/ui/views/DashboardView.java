@@ -192,7 +192,8 @@ public class DashboardView extends BorderPane {
         if (team != null && team.getMembers() != null) {
             int colorIdx = 0;
             for (String member : team.getMembers()) {
-                String displayName = member.contains("@") ? member.split("@")[0] : member;
+                String displayName = member.equals(team.getOwnerId()) && team.getOwnerUsername() != null ? 
+                                     team.getOwnerUsername() : (member.contains("@") ? member.split("@")[0] : member);
                 String initials = displayName.length() >= 2
                         ? displayName.substring(0, 2).toUpperCase()
                         : displayName.toUpperCase();
