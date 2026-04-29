@@ -23,13 +23,16 @@ public class WorkspaceService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
+    private final com.project.snm.repository.JoinRequestRepository joinRequestRepository;
 
     public WorkspaceService(TeamRepository teamRepository,
                             TeamMemberRepository teamMemberRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            com.project.snm.repository.JoinRequestRepository joinRequestRepository) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.userRepository = userRepository;
+        this.joinRequestRepository = joinRequestRepository;
     }
 
     /** Returns all teams the given user (by userId UUID) is a member of. */
@@ -64,25 +67,48 @@ public class WorkspaceService {
         return team;
     }
 
-    /** Joins a workspace by invite code. Adds the user as a MEMBER. */
+    /** Joins a workspace by invite code. Creates a PENDING join request. */
     public Team joinWorkspace(String workspaceCode, String userId) {
         Team team = teamRepository.findByWorkspaceCode(workspaceCode)
                 .orElseThrow(() -> new NotFoundException("Workspace not found for code: " + workspaceCode));
 
         if (teamMemberRepository.existsByTeamIdAndUserId(team.getId(), userId)) {
             log.info("User {} is already a member of team {}", userId, team.getId());
-            return team; // idempotent
+            return team;
         }
 
+        if (joinRequestRepository.findByTeamIdAndUserIdAndStatus(team.getId(), userId, "PENDING").isPresent()) {
+            log.info("Join request already pending for user {} to team {}", userId, team.getId());
+            return team;
+        }
+
+        com.project.snm.model.mysql.JoinRequest request = new com.project.snm.model.mysql.JoinRequest();
+        request.setTeamId(team.getId());
+        request.setUserId(userId);
+        request.setUsername(getUsernameById(userId));
+        request.setStatus("PENDING");
+        joinRequestRepository.save(request);
+
+        log.info("User {} requested to join workspace {}", userId, team.getId());
+        return team;
+    }
+
+    /** Finalizes membership after owner approval. */
+    public void acceptJoinRequest(Long requestId) {
+        com.project.snm.model.mysql.JoinRequest request = joinRequestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Join request not found: " + requestId));
+        
+        request.setStatus("ACCEPTED");
+        joinRequestRepository.save(request);
+
         TeamMember member = new TeamMember();
-        member.setTeamId(team.getId());
-        member.setUserId(userId);
+        member.setTeamId(request.getTeamId());
+        member.setUserId(request.getUserId());
         member.setRole("MEMBER");
         member.setJoinedAt(Instant.now());
         teamMemberRepository.save(member);
-
-        log.info("User {} joined workspace {}", userId, team.getId());
-        return team;
+        
+        log.info("Join request accepted: {} for team {}", request.getUserId(), request.getTeamId());
     }
 
     /** Fetches a team by ID, throws 404 if not found. */
@@ -110,5 +136,17 @@ public class WorkspaceService {
         byte[] bytes = new byte[6];
         new SecureRandom().nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /** Returns all members of a team. */
+    public List<TeamMember> getTeamMembers(String teamId) {
+        return teamMemberRepository.findByTeamId(teamId);
+    }
+
+    /** Returns the public key of any user by ID. */
+    public String getUserPublicKeyBase64(String userId) {
+        return userRepository.findById(userId)
+                .map(UserRecord::getPublicKeyBase64)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
     }
 }

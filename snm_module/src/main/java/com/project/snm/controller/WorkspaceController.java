@@ -160,4 +160,30 @@ public class WorkspaceController {
         )).collect(Collectors.toList());
         return ResponseEntity.ok(result);
     }
+
+    // ─── GET /workspaces/{teamId}/members ───────────────────────────────────
+    /** Returns a list of all members in the workspace. */
+    @GetMapping("/{teamId}/members")
+    public ResponseEntity<?> listMembers(@PathVariable String teamId) {
+        List<com.project.snm.model.mysql.TeamMember> members = workspaceService.getTeamMembers(teamId);
+        List<Map<String, Object>> result = members.stream().map(m -> {
+            boolean hasEnv = envelopeRepository.findByTeamIdAndUserId(teamId, m.getUserId()).isPresent();
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("userId", m.getUserId());
+            map.put("username", workspaceService.getUsernameById(m.getUserId()));
+            map.put("role", m.getRole());
+            map.put("hasEnvelope", hasEnv);
+            return map;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    // ─── GET /workspaces/users/{userId}/public-key ──────────────────────────
+    /** Returns the raw X25519 public key bytes for any user. */
+    @GetMapping("/users/{userId}/public-key")
+    public ResponseEntity<byte[]> getUserPublicKey(@PathVariable String userId) {
+        String publicKeyBase64 = workspaceService.getUserPublicKeyBase64(userId);
+        byte[] raw = Base64.getDecoder().decode(publicKeyBase64);
+        return ResponseEntity.ok(raw);
+    }
 }

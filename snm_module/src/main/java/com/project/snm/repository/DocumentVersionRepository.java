@@ -11,6 +11,8 @@ import java.util.List;
 public interface DocumentVersionRepository extends JpaRepository<DocumentVersion, Long> {
     List<DocumentVersion> findByDocumentUuidOrderByVersionSeqAsc(String documentUuid);
 
+    void deleteByDocumentUuid(String documentUuid);
+
     @Query("SELECT v FROM DocumentVersion v WHERE v.teamId = :teamId AND v.versionSeq = (SELECT MAX(v2.versionSeq) FROM DocumentVersion v2 WHERE v2.documentUuid = v.documentUuid)")
     List<DocumentVersion> findLatestVersionsByTeamId(String teamId);
 }

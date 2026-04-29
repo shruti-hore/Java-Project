@@ -110,6 +110,18 @@ public class DocumentController {
         return ResponseEntity.ok(mapToResponse(latest));
     }
 
+    @GetMapping("/{documentUuid}")
+    public ResponseEntity<DocumentVersionResponse> getLatestDocument(@PathVariable String documentUuid) throws tools.jackson.core.JacksonException {
+        return getLatestVersion(documentUuid);
+    }
+
+    @DeleteMapping("/{documentUuid}")
+    @Transactional
+    public ResponseEntity<Void> deleteDocument(@PathVariable String documentUuid) {
+        documentVersionRepository.deleteByDocumentUuid(documentUuid);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/teams/{teamId}/documents")
     public ResponseEntity<List<Map<String, Object>>> getTeamDocuments(@PathVariable String teamId) {
         List<DocumentVersion> latests = documentVersionRepository.findLatestVersionsByTeamId(teamId);
