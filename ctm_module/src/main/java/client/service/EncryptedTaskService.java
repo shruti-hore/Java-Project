@@ -147,4 +147,29 @@ public class EncryptedTaskService {
 
         httpClient.send(request, HttpResponse.BodyHandlers.discarding());
     }
+
+    public void pushPayload(String docUuid, String teamId, EncryptedDocumentPayload payload) throws IOException, InterruptedException {
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("teamId", teamId);
+        requestBody.put("ciphertextBase64", payload.ciphertextBase64());
+        requestBody.put("nonceBase64", payload.nonceBase64());
+        requestBody.put("aadBase64", payload.aadBase64());
+        requestBody.put("expectedVersionSeq", payload.versionSeq());
+
+        String jsonBody = objectMapper.writeValueAsString(requestBody);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(serverBaseUrl + "/documents/" + docUuid + "/versions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + session.getJwt())
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            if (response.statusCode() == 409) {
+                throw new RuntimeException("CONFLICT"); // Signal conflict to caller
+            }
+            throw new RuntimeException("Failed to push payload. Status: " + response.statusCode() + ", Body: " + response.body());
+        }
+    }
 }

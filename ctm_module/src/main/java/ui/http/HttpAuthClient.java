@@ -23,14 +23,29 @@ public class HttpAuthClient {
     private final java.util.List<InboxItem> mockInbox = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
 
     public CompletableFuture<List<InboxItem>> fetchInbox() {
-        return CompletableFuture.supplyAsync(() -> new java.util.ArrayList<>(mockInbox));
+        HttpRequest request = newRequestBuilder("/inbox").GET().build();
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            .thenApply(response -> {
+                if (response.statusCode() >= 400) throw new RuntimeException("Failed to fetch inbox");
+                try {
+                    return objectMapper.readValue(response.body(), objectMapper.getTypeFactory().constructCollectionType(List.class, InboxItem.class));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
     }
 
     public CompletableFuture<Void> respondToInbox(String id, boolean accept) {
-        return CompletableFuture.supplyAsync(() -> {
-            mockInbox.removeIf(i -> i.id().equals(id));
-            return null;
-        });
+        Map<String, Boolean> body = Map.of("accept", accept);
+        try {
+            String json = objectMapper.writeValueAsString(body);
+            HttpRequest request = newRequestBuilder("/inbox/" + id + "/respond")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.discarding()).thenApply(r -> null);
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     public CompletableFuture<Void> sendInvite(String teamId, String email) {
@@ -99,6 +114,22 @@ public class HttpAuthClient {
         return objectMapper.readValue(response.body(), EncryptedDocumentPayload.class);
     }
 
+    public record TeamMember(String userId, String username, String role, boolean hasEnvelope) {}
+
+    public List<TeamMember> fetchTeamMembers(String teamId) throws Exception {
+        HttpRequest request = newRequestBuilder("/workspaces/" + teamId + "/members").GET().build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) throw new RuntimeException("Failed to fetch members: " + response.body());
+        return objectMapper.readValue(response.body(), objectMapper.getTypeFactory().constructCollectionType(List.class, TeamMember.class));
+    }
+
+    public byte[] fetchUserPublicKey(String userId) throws Exception {
+        HttpRequest request = newRequestBuilder("/workspaces/users/" + userId + "/public-key").GET().build();
+        HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() >= 400) throw new RuntimeException("Failed to fetch user public key");
+        return response.body();
+    }
+
     public CompletableFuture<Map<String, String>> challenge(String email) {
         Map<String, String> body = Map.of("email", email);
         return post("/auth/login/challenge", body);
@@ -130,10 +161,26 @@ public class HttpAuthClient {
     public record CreateWorkspaceResponse(String teamId, String workspaceCode) {}
 
     public CompletableFuture<JoinWorkspaceResponse> joinWorkspace(String workspaceCode) {
-        return CompletableFuture.supplyAsync(() -> {
-            mockInbox.add(new InboxItem(java.util.UUID.randomUUID().toString(), "JOIN REQUEST", "user", "team-" + workspaceCode));
-            return new JoinWorkspaceResponse("mock-id", "mock-name", "PENDING");
-        });
+        Map<String, String> body = Map.of("workspaceCode", workspaceCode);
+        try {
+            String json = objectMapper.writeValueAsString(body);
+            HttpRequest request = newRequestBuilder("/workspaces/join")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
+                .build();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> {
+                    if (response.statusCode() >= 400) throw new RuntimeException("Failed to join workspace: " + response.body());
+                    try {
+                        // Backend returns status JOINED or request is accepted later.
+                        // For now, we assume if it returns a teamId, it's PENDING or JOINED.
+                        return objectMapper.readValue(response.body(), JoinWorkspaceResponse.class);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     public CompletableFuture<CreateWorkspaceResponse> createWorkspace(String name, String ownerPublicKeyBase64) {
