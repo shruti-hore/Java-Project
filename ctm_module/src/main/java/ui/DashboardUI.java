@@ -309,6 +309,9 @@ public class DashboardUI extends Application {
             pendingEmailHmac = pendingSaltBase64 = pendingVaultBlobBase64 = null;
             setLoginLoading(false, actionBtn);
             
+            // Initialize secure services once we have sessionState
+            initializeSecureServices();
+            
             // Step 3: Team Selection
             showTeamSelectionScreen();
         });
@@ -480,11 +483,15 @@ public class DashboardUI extends Application {
             protected Void call() throws Exception {
                 String envelopeBase64 = httpClient.fetchTeamKeyEnvelope(team.getId());
                 byte[] ownerPublicKeyBytes = httpClient.fetchOwnerPublicKey(team.getId());
-                
                 java.security.PublicKey ownerPublicKey = cryptoAdapter.loadPublicKey(ownerPublicKeyBytes);
-                
+
+                String cleanEnvelope = envelopeBase64.trim();
+                if (cleanEnvelope.startsWith("\"") && cleanEnvelope.endsWith("\"")) {
+                    cleanEnvelope = cleanEnvelope.substring(1, cleanEnvelope.length() - 1);
+                }
+
                 byte[] teamKeyBytes = cryptoAdapter.unwrapTeamKey(
-                    Base64.getDecoder().decode(envelopeBase64.trim().replace("\"", "")),
+                    Base64.getDecoder().decode(cleanEnvelope),
                     ownerPublicKey,
                     sessionState.getX25519PrivateKey()
                 );
@@ -501,7 +508,7 @@ public class DashboardUI extends Application {
                 encryptedTaskService = new client.service.EncryptedTaskService(
                     docCrypto, sessionState, httpClient.getClient(), httpClient.getBaseUrl()
                 );
-                taskService = new service.TaskService(encryptedTaskService, sessionState, selectedTeamId);
+                taskService = new service.TaskService(encryptedTaskService, localCache, sessionState, selectedTeamId);
                 
                 if (syncManager != null) {
                     syncManager.stop();
@@ -532,6 +539,19 @@ public class DashboardUI extends Application {
     private void setSyncIndicator(boolean syncing) {
         // Update UI to show sync status
         System.out.println("Syncing: " + syncing);
+    }
+
+    private void initializeSecureServices() {
+        try {
+            NonceCounterStore counterStore = new NonceCounterStore(Paths.get("nonce_counters.txt"));
+            counterStore.load();
+            DocumentCryptoService docCrypto = new DocumentCryptoService(cryptoAdapter, counterStore);
+            this.encryptedTaskService = new client.service.EncryptedTaskService(
+                docCrypto, sessionState, httpClient.getClient(), httpClient.getBaseUrl()
+            );
+        } catch (Exception e) {
+            System.err.println("Failed to initialize secure services: " + e.getMessage());
+        }
     }
 
     private void showConflictDialog(client.sync.ConflictPair pair) {
@@ -678,19 +698,9 @@ public class DashboardUI extends Application {
 
             task.setOnSucceeded(ev -> {
                 ui.http.HttpAuthClient.JoinWorkspaceResponse res = task.getValue();
-                if ("PENDING".equals(res.status())) {
-                    statusLabel.setText("Request sent. Waiting for owner approval.");
-                    statusLabel.setStyle("-fx-text-fill: #6b7280;");
-                    submit.setText("CLOSE");
-                    submit.setDisable(false);
-                    submit.setOnAction(a -> {
-                        hideOverlay();
-                        showWorkspaceSelection();
-                    });
-                } else {
-                    hideOverlay();
-                    showWorkspaceSelection();
-                }
+                hideOverlay();
+                showMessage("Request Sent", "Your request to join '" + res.name() + "' has been sent to the owner for approval.");
+                showWorkspaceSelection();
             });
 
             task.setOnFailed(ev -> {
@@ -760,11 +770,12 @@ public class DashboardUI extends Application {
             
             boolean isOwner = selectedTeam.getOwnerId().equals(sessionState.getUserId());
             if (isOwner) {
+                dashboardView.getAddMemberBtn().setText("MANAGE TEAM");
                 dashboardView.getAddMemberBtn().setVisible(true);
                 dashboardView.getAddMemberBtn().setManaged(true);
                 dashboardView.getRemoveMemberBtn().setVisible(true);
                 dashboardView.getRemoveMemberBtn().setManaged(true);
-                dashboardView.getAddMemberBtn().setOnAction(e -> handleAddMember());
+                dashboardView.getAddMemberBtn().setOnAction(e -> showManageTeamDialog());
                 dashboardView.getRemoveMemberBtn().setOnAction(e -> handleRemoveMember());
             }
 
@@ -799,6 +810,9 @@ public class DashboardUI extends Application {
         Task<List<client.model.Task>> task = new Task<>() {
             @Override
             protected List<client.model.Task> call() throws Exception {
+                if (encryptedTaskService == null) initializeSecureServices();
+                if (encryptedTaskService == null) throw new RuntimeException("Secure services not ready");
+
                 List<client.model.Task> allTasks = new java.util.ArrayList<>();
                 List<model.Team> teams = teamService.getTeamsForUser(sessionState.getUserId());
                 
@@ -808,8 +822,14 @@ public class DashboardUI extends Application {
                             String envelopeBase64 = httpClient.fetchTeamKeyEnvelope(team.getId());
                             byte[] ownerPublicKeyBytes = httpClient.fetchOwnerPublicKey(team.getId());
                             java.security.PublicKey ownerPublicKey = cryptoAdapter.loadPublicKey(ownerPublicKeyBytes);
+                            
+                            String cleanEnvelope = envelopeBase64.trim();
+                            if (cleanEnvelope.startsWith("\"") && cleanEnvelope.endsWith("\"")) {
+                                cleanEnvelope = cleanEnvelope.substring(1, cleanEnvelope.length() - 1);
+                            }
+
                             byte[] teamKeyBytes = cryptoAdapter.unwrapTeamKey(
-                                Base64.getDecoder().decode(envelopeBase64),
+                                Base64.getDecoder().decode(cleanEnvelope),
                                 ownerPublicKey,
                                 sessionState.getX25519PrivateKey()
                             );
@@ -1222,6 +1242,114 @@ public class DashboardUI extends Application {
         buttons.getChildren().addAll(cancel, removeBtn);
         form.getChildren().addAll(title, usernameField, statusLabel, buttons);
         showOverlay(form);
+    }
+
+    private void showManageTeamDialog() {
+        VBox layout = new VBox(20);
+        layout.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        layout.setMaxSize(600, 500);
+        layout.setAlignment(Pos.TOP_CENTER);
+
+        Label title = new Label("Manage Team Members");
+        title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        VBox memberList = new VBox(10);
+        memberList.setPadding(new Insets(10));
+
+        ScrollPane scroll = new ScrollPane(memberList);
+        scroll.setFitToWidth(true);
+        scroll.setPrefHeight(300);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        Task<List<ui.http.HttpAuthClient.TeamMember>> fetch = new Task<>() {
+            @Override protected List<ui.http.HttpAuthClient.TeamMember> call() throws Exception {
+                return httpClient.fetchTeamMembers(selectedTeamId);
+            }
+        };
+
+        fetch.setOnSucceeded(e -> {
+            memberList.getChildren().clear();
+            for (ui.http.HttpAuthClient.TeamMember m : fetch.getValue()) {
+                HBox row = new HBox(15);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.setStyle("-fx-background-color: #f9fafb; -fx-padding: 15; -fx-background-radius: 12;");
+
+                VBox info = new VBox(5);
+                Label name = new Label(m.username());
+                name.setStyle("-fx-font-weight: bold; -fx-text-fill: #111827;");
+                Label role = new Label(m.role());
+                role.setStyle("-fx-font-size: 12px; -fx-text-fill: #6b7280;");
+                info.getChildren().addAll(name, role);
+
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                Button actionBtn = new Button();
+                if (m.hasEnvelope()) {
+                    actionBtn.setText("KEY SHARED");
+                    actionBtn.setDisable(true);
+                    actionBtn.setStyle("-fx-background-color: #d1fae5; -fx-text-fill: #065f46; -fx-font-weight: bold;");
+                } else {
+                    actionBtn.setText("SHARE KEY");
+                    actionBtn.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                    actionBtn.setOnAction(ev -> shareKeyWithMember(m, actionBtn));
+                }
+
+                row.getChildren().addAll(info, spacer, actionBtn);
+                memberList.getChildren().add(row);
+            }
+        });
+
+        fetch.setOnFailed(e -> showError("Failed to load members: " + fetch.getException().getMessage()));
+
+        Button close = new Button("CLOSE");
+        close.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 10; -fx-cursor: hand;");
+        close.setOnAction(e -> hideOverlay());
+
+        layout.getChildren().addAll(title, scroll, close);
+        showOverlay(layout);
+        new Thread(fetch).start();
+    }
+
+    private void shareKeyWithMember(ui.http.HttpAuthClient.TeamMember member, Button btn) {
+        btn.setDisable(true);
+        btn.setText("SHARING...");
+
+        Task<Void> share = new Task<>() {
+            @Override protected Void call() throws Exception {
+                // 1. Fetch member's public key
+                byte[] pubKeyBytes = httpClient.fetchUserPublicKey(member.userId());
+                java.security.PublicKey memberPubKey = cryptoAdapter.loadPublicKey(pubKeyBytes);
+
+                // 2. Get team key from session
+                byte[] teamKey = sessionState.getTeamKey(selectedTeamId);
+                if (teamKey == null) throw new RuntimeException("Team key not found in session!");
+
+                // 3. Wrap key
+                byte[] envelope = cryptoAdapter.wrapTeamKey(
+                    teamKey,
+                    memberPubKey,
+                    sessionState.getX25519PrivateKey()
+                );
+
+                // 4. Upload envelope
+                httpClient.postKeyEnvelope(selectedTeamId, member.userId(), Base64.getEncoder().encodeToString(envelope)).get();
+                return null;
+            }
+        };
+
+        share.setOnSucceeded(e -> {
+            btn.setText("KEY SHARED");
+            btn.setStyle("-fx-background-color: #d1fae5; -fx-text-fill: #065f46; -fx-font-weight: bold;");
+        });
+
+        share.setOnFailed(e -> {
+            btn.setDisable(false);
+            btn.setText("SHARE KEY");
+            showError("Failed to share key: " + share.getException().getMessage());
+        });
+
+        new Thread(share).start();
     }
 
     private void showInboxView() {

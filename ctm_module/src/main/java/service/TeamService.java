@@ -22,11 +22,4 @@ public class TeamService {
         }
     }
 
-    public void createTeam(String name, String ownerEmail) {
-        throw new UnsupportedOperationException("Use DashboardUI.showCreateTeamDialog()");
-    }
-
-    public void joinTeam(String teamId, String email) {
-        throw new UnsupportedOperationException("Use DashboardUI.showJoinTeamDialog()");
-    }
 }
