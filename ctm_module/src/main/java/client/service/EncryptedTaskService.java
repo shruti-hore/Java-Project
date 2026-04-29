@@ -71,18 +71,25 @@ public class EncryptedTaskService {
                 .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                 .build();
 
-        httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() >= 400) {
+            throw new RuntimeException("Failed to save task. Status: " + response.statusCode() + ", Body: " + response.body());
+        }
     }
 
     public List<Task> getAllTasksForTeam(String teamId, SessionState session) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(serverBaseUrl + "/workspaces/" + teamId + "/documents"))
+                    .uri(URI.create(serverBaseUrl + "/documents/teams/" + teamId + "/documents"))
                     .header("Authorization", "Bearer " + session.getJwt())
                     .GET()
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 400) {
+                System.err.println("Failed to fetch documents. Status: " + response.statusCode() + ", Body: " + response.body());
+                return new ArrayList<>();
+            }
             List<Map<String, Object>> docs = objectMapper.readValue(response.body(), new TypeReference<>() {});
             List<Task> tasks = new ArrayList<>();
 
@@ -96,7 +103,7 @@ public class EncryptedTaskService {
                         (String) payloadMap.get("nonceBase64"),
                         (String) payloadMap.get("aadBase64"),
                         0, // counter not needed for decryption
-                        (Integer) payloadMap.get("versionSeq")
+                        ((Number) payloadMap.get("versionSeq")).intValue()
                 );
 
                 try {
@@ -104,11 +111,12 @@ public class EncryptedTaskService {
                     t.setCurrentVersionSeq(payload.versionSeq());
                     tasks.add(t);
                 } catch (AEADBadTagException e) {
-                    // Skip documents we can't decrypt
+                    System.err.println("Failed to decrypt document " + docUuid + ": " + e.getMessage());
                 }
             }
             return tasks;
         } catch (Exception e) {
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }

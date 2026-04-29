@@ -12,7 +12,8 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserRecord {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(generator = "uuid2")
+    @org.hibernate.annotations.GenericGenerator(name = "uuid2", strategy = "uuid2")
     private String userId;
 
     @Column(unique = true, nullable = false)

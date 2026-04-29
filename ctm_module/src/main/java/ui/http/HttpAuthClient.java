@@ -18,6 +18,32 @@ public class HttpAuthClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private String jwt;
 
+    // --- MOCK INBOX STATE ---
+    public record InboxItem(String id, String type, String usernameOrEmail, String teamId) {}
+    private final java.util.List<InboxItem> mockInbox = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+    public CompletableFuture<List<InboxItem>> fetchInbox() {
+        return CompletableFuture.supplyAsync(() -> new java.util.ArrayList<>(mockInbox));
+    }
+
+    public CompletableFuture<Void> respondToInbox(String id, boolean accept) {
+        return CompletableFuture.supplyAsync(() -> {
+            mockInbox.removeIf(i -> i.id().equals(id));
+            return null;
+        });
+    }
+
+    public CompletableFuture<Void> sendInvite(String teamId, String email) {
+        return CompletableFuture.supplyAsync(() -> {
+            mockInbox.add(new InboxItem(java.util.UUID.randomUUID().toString(), "INVITE", email, teamId));
+            return null;
+        });
+    }
+
+    public CompletableFuture<Void> removeMember(String teamId, String username) {
+        return CompletableFuture.completedFuture(null);
+    }
+
     public record WorkspaceSummary(String teamId, String name, String ownerUserId, String ownerUsername, String lastSyncedAt) {}
     public record DocumentMeta(String documentUuid, int versionSeq) {}
 
@@ -104,13 +130,9 @@ public class HttpAuthClient {
     public record CreateWorkspaceResponse(String teamId, String workspaceCode) {}
 
     public CompletableFuture<JoinWorkspaceResponse> joinWorkspace(String workspaceCode) {
-        Map<String, String> body = Map.of("workspaceCode", workspaceCode);
-        return post("/workspaces/join", body).thenApply(map -> {
-            return new JoinWorkspaceResponse(
-                (String)map.get("teamId"), 
-                (String)map.get("name"), 
-                (String)map.get("status")
-            );
+        return CompletableFuture.supplyAsync(() -> {
+            mockInbox.add(new InboxItem(java.util.UUID.randomUUID().toString(), "JOIN REQUEST", "user", "team-" + workspaceCode));
+            return new JoinWorkspaceResponse("mock-id", "mock-name", "PENDING");
         });
     }
 

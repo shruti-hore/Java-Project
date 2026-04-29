@@ -53,11 +53,13 @@ public class SidebarView extends VBox {
             Label trackingNav = createNavItem("Tracking", "KANBAN");
             Label projectsNav = createNavItem("Projects", "PROJECTS");
             Label historyNav = createNavItem("Work History", "HISTORY");
+            Label inboxNav = createNavItem("Inbox", "INBOX");
             
             navBox.getChildren().add(1, dashboardNav);
             navBox.getChildren().add(2, trackingNav);
             navBox.getChildren().add(3, projectsNav);
             navBox.getChildren().add(4, historyNav);
+            navBox.getChildren().add(5, inboxNav);
         }
 
         Label toolsHeader = new Label("TOOLS");

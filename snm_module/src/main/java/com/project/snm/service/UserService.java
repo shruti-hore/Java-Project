@@ -20,6 +20,9 @@ public class UserService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("An account with this email already exists.");
         }
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new ConflictException("An account with this username already exists.");
+        }
 
         UserRecord user = new UserRecord();
         user.setEmail(request.getEmail());

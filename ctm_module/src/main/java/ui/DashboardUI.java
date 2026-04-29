@@ -4,6 +4,7 @@ import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -725,6 +726,9 @@ public class DashboardUI extends Application {
                 case "CALENDAR": 
                     loadGlobalCalendar();
                     break;
+                case "INBOX":
+                    showInboxView();
+                    break;
                 case "LOGOUT": handleLogout(); break;
                 default: showError("Module coming soon!");
             }
@@ -740,16 +744,10 @@ public class DashboardUI extends Application {
             myTasksView = new MyTasksView(taskService, taskList, this::handleEditAction, (client.model.Task t) -> {
                 showConfirmation("Delete Task", "Are you sure you want to delete this task?", () -> {
                     taskService.deleteTask(t.getId());
-                    taskList.remove(t);
-                    if (myTasksView != null) myTasksView.refresh();
-                    if (dashboardView != null) dashboardView.refresh();
-                    if (calendarView != null) calendarView.refresh();
+                    refreshTaskData();
                 });
             });
-            myTasksView.setOnTaskUpdated(() -> {
-                if (dashboardView != null) dashboardView.refresh();
-                if (calendarView != null) calendarView.refresh();
-            });
+            myTasksView.setOnTaskUpdated(this::refreshTaskData);
             calendarView = new ui.views.CalendarView(taskList);
 
             dashboardView.getAddTaskButton().setOnAction(e -> handleEditAction(null));
@@ -759,6 +757,16 @@ public class DashboardUI extends Application {
             });
             dashboardView.getCreateWorkspaceButton().setOnAction(e -> handleCreateTeam());
             dashboardView.getJoinWorkspaceButton().setOnAction(e -> handleJoinTeam());
+            
+            boolean isOwner = selectedTeam.getOwnerId().equals(sessionState.getUserId());
+            if (isOwner) {
+                dashboardView.getAddMemberBtn().setVisible(true);
+                dashboardView.getAddMemberBtn().setManaged(true);
+                dashboardView.getRemoveMemberBtn().setVisible(true);
+                dashboardView.getRemoveMemberBtn().setManaged(true);
+                dashboardView.getAddMemberBtn().setOnAction(e -> handleAddMember());
+                dashboardView.getRemoveMemberBtn().setOnAction(e -> handleRemoveMember());
+            }
 
             mainRoot.setCenter(dashboardView);
 
@@ -829,6 +837,15 @@ public class DashboardUI extends Application {
         new Thread(task).start();
     }
 
+    private void refreshTaskData() {
+        if (selectedTeamId != null && sessionState != null) {
+            taskList.setAll(taskService.getAllTasks(sessionState.getUserId(), selectedTeamId));
+            if (myTasksView != null) myTasksView.refresh();
+            if (dashboardView != null) dashboardView.refresh();
+            if (calendarView != null) calendarView.refresh();
+        }
+    }
+
     private void handleEditAction(client.model.Task t) {
         if (t == null)
             showAddTaskDialog();
@@ -870,20 +887,37 @@ public class DashboardUI extends Application {
                 return;
             }
 
+            save.setDisable(true);
+            save.setText("Adding...");
+
             client.model.Task newTask = new client.model.Task(java.util.UUID.randomUUID().toString(), title, dIn.getText(), date, false, "DEADLINE", pIn.getValue(),
                     sessionState.getUserId(), selectedTeamId);
-            taskService.addTask(newTask);
-            taskList.add(newTask);
-            if (myTasksView != null) myTasksView.refresh();
-            if (dashboardView != null) dashboardView.refresh();
-            if (calendarView != null) calendarView.refresh();
-            hideOverlay();
+
+            javafx.concurrent.Task<Void> addTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    taskService.addTask(newTask);
+                    return null;
+                }
+            };
+            addTask.setOnSucceeded(ev -> {
+                refreshTaskData();
+                hideOverlay();
+            });
+            addTask.setOnFailed(ev -> {
+                save.setDisable(false);
+                save.setText("Add Task");
+                showError("Failed to add task: " + addTask.getException().getMessage());
+            });
+            new Thread(addTask).start();
         });
 
-        VBox layout = new VBox(15, new Label("NEW TASK"), tIn, dIn, dateIn, pIn, save);
+        Label titleLbl = new Label("NEW TASK");
+        titleLbl.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+        VBox layout = new VBox(15, titleLbl, tIn, dIn, dateIn, pIn, save);
         layout.setStyle(
                 "-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
-        layout.setMaxSize(400, 450);
+        layout.setMaxSize(400, 480);
         showOverlay(layout);
     }
 
@@ -923,17 +957,35 @@ public class DashboardUI extends Application {
             t.setDescription(dIn.getText());
             t.setDeadline(date);
             t.setPriority(pIn.getValue());
-            taskService.updateTask(t);
-            if (myTasksView != null) myTasksView.refresh();
-            if (dashboardView != null) dashboardView.refresh();
-            if (calendarView != null) calendarView.refresh();
-            hideOverlay();
+
+            save.setDisable(true);
+            save.setText("Saving...");
+
+            javafx.concurrent.Task<Void> updateTask = new javafx.concurrent.Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    taskService.updateTask(t);
+                    return null;
+                }
+            };
+            updateTask.setOnSucceeded(ev -> {
+                refreshTaskData();
+                hideOverlay();
+            });
+            updateTask.setOnFailed(ev -> {
+                save.setDisable(false);
+                save.setText("Save Changes");
+                showError("Failed to update task");
+            });
+            new Thread(updateTask).start();
         });
 
-        VBox layout = new VBox(15, new Label("EDIT TASK"), tIn, dIn, dateIn, pIn, save);
+        Label editTitleLbl = new Label("EDIT TASK");
+        editTitleLbl.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+        VBox layout = new VBox(15, editTitleLbl, tIn, dIn, dateIn, pIn, save);
         layout.setStyle(
                 "-fx-padding: 40; -fx-background-color: white; -fx-background-radius: 24; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 30, 0, 0, 10);");
-        layout.setMaxSize(400, 450);
+        layout.setMaxSize(400, 480);
         showOverlay(layout);
     }
 
@@ -1024,6 +1076,212 @@ public class DashboardUI extends Application {
             httpClient.setJwt(null);
         }
         showLoginScreen();
+    }
+
+    private void showMessage(String titleStr, String msg) {
+        VBox box = new VBox(20);
+        box.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        box.setMaxSize(400, 200);
+        box.setAlignment(Pos.CENTER);
+
+        Label title = new Label(titleStr);
+        title.setStyle("-fx-text-fill: #10b981; -fx-font-size: 20px; -fx-font-weight: bold;");
+        Label content = new Label(msg);
+        content.setWrapText(true);
+        content.setStyle("-fx-text-fill: #374151;");
+
+        Button ok = new Button("OK");
+        ok.setPrefWidth(100);
+        ok.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10; -fx-background-radius: 8;");
+        ok.setOnAction(e -> hideOverlay());
+
+        box.getChildren().addAll(title, content, ok);
+        showOverlay(box);
+    }
+
+    private void handleAddMember() {
+        VBox form = new VBox(20);
+        form.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        form.setMaxSize(420, 300);
+        form.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Add Team Member");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        TextField emailField = new TextField();
+        emailField.setPromptText("Enter member's email");
+        emailField.setStyle("-fx-background-color: #f9fafb; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
+        Label statusLabel = new Label();
+        statusLabel.setWrapText(true);
+
+        HBox buttons = new HBox(15);
+        buttons.setAlignment(Pos.CENTER);
+
+        Button cancel = new Button("CANCEL");
+        cancel.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-font-weight: bold; -fx-padding: 10 25; -fx-background-radius: 10; -fx-cursor: hand;");
+        cancel.setOnAction(e -> hideOverlay());
+
+        Button addBtn = new Button("ADD MEMBER");
+        addBtn.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 25; -fx-background-radius: 10; -fx-cursor: hand;");
+
+        addBtn.setOnAction(e -> {
+            String email = emailField.getText();
+            if (email == null || email.trim().isEmpty()) {
+                statusLabel.setText("Email cannot be empty");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+                return;
+            }
+            if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                statusLabel.setText("Please enter a valid email address");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+                return;
+            }
+            addBtn.setDisable(true);
+            statusLabel.setText("Sending invite...");
+            statusLabel.setStyle("-fx-text-fill: #6b7280;");
+
+            Task<Void> t = new Task<>() {
+                @Override protected Void call() throws Exception {
+                    httpClient.sendInvite(selectedTeamId, email.trim()).get();
+                    return null;
+                }
+            };
+            t.setOnSucceeded(ev -> {
+                hideOverlay();
+                showMessage("Invite Sent", "Invitation sent to " + email.trim());
+            });
+            t.setOnFailed(ev -> {
+                addBtn.setDisable(false);
+                statusLabel.setText("Failed to send invite");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+            });
+            new Thread(t).start();
+        });
+
+        buttons.getChildren().addAll(cancel, addBtn);
+        form.getChildren().addAll(title, emailField, statusLabel, buttons);
+        showOverlay(form);
+    }
+
+    private void handleRemoveMember() {
+        VBox form = new VBox(20);
+        form.setStyle("-fx-background-color: white; -fx-padding: 40; -fx-background-radius: 24;");
+        form.setMaxSize(420, 300);
+        form.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Remove Team Member");
+        title.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Enter member's username");
+        usernameField.setStyle("-fx-background-color: #f9fafb; -fx-padding: 14; -fx-background-radius: 12; -fx-border-color: #e5e7eb; -fx-border-radius: 12;");
+
+        Label statusLabel = new Label();
+        statusLabel.setWrapText(true);
+
+        HBox buttons = new HBox(15);
+        buttons.setAlignment(Pos.CENTER);
+
+        Button cancel = new Button("CANCEL");
+        cancel.setStyle("-fx-background-color: #f3f4f6; -fx-text-fill: #374151; -fx-font-weight: bold; -fx-padding: 10 25; -fx-background-radius: 10; -fx-cursor: hand;");
+        cancel.setOnAction(e -> hideOverlay());
+
+        Button removeBtn = new Button("REMOVE");
+        removeBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 25; -fx-background-radius: 10; -fx-cursor: hand;");
+
+        removeBtn.setOnAction(e -> {
+            String username = usernameField.getText();
+            if (username == null || username.trim().isEmpty()) {
+                statusLabel.setText("Username cannot be empty");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+                return;
+            }
+            removeBtn.setDisable(true);
+            statusLabel.setText("Removing member...");
+            statusLabel.setStyle("-fx-text-fill: #6b7280;");
+
+            Task<Void> t = new Task<>() {
+                @Override protected Void call() throws Exception {
+                    httpClient.removeMember(selectedTeamId, username.trim()).get();
+                    return null;
+                }
+            };
+            t.setOnSucceeded(ev -> {
+                hideOverlay();
+                showMessage("Success", "Member '" + username.trim() + "' has been removed.");
+            });
+            t.setOnFailed(ev -> {
+                removeBtn.setDisable(false);
+                statusLabel.setText("Failed to remove member");
+                statusLabel.setStyle("-fx-text-fill: #ef4444;");
+            });
+            new Thread(t).start();
+        });
+
+        buttons.getChildren().addAll(cancel, removeBtn);
+        form.getChildren().addAll(title, usernameField, statusLabel, buttons);
+        showOverlay(form);
+    }
+
+    private void showInboxView() {
+        VBox inbox = new VBox(20);
+        inbox.setPadding(new Insets(30));
+        inbox.setStyle("-fx-background-color: #f5f6fa;");
+
+        Label title = new Label("INBOX");
+        title.setStyle("-fx-text-fill: #1f2937; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        VBox list = new VBox(10);
+        
+        Task<List<ui.http.HttpAuthClient.InboxItem>> fetch = new Task<>() {
+            @Override protected List<ui.http.HttpAuthClient.InboxItem> call() throws Exception {
+                return httpClient.fetchInbox().get();
+            }
+        };
+        fetch.setOnSucceeded(e -> {
+            for (ui.http.HttpAuthClient.InboxItem item : fetch.getValue()) {
+                HBox row = new HBox(15);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.setStyle("-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);");
+                
+                Label info = new Label(item.type() + " from " + item.usernameOrEmail());
+                info.setStyle("-fx-font-weight: bold; -fx-text-fill: #374151;");
+                
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+                
+                Button accept = new Button("Accept");
+                accept.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                Button reject = new Button("Reject");
+                reject.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                
+                accept.setOnAction(a -> {
+                    Task<Void> t = new Task<>() {
+                        @Override protected Void call() throws Exception { httpClient.respondToInbox(item.id(), true).get(); return null; }
+                    };
+                    t.setOnSucceeded(s -> showInboxView());
+                    new Thread(t).start();
+                });
+                reject.setOnAction(a -> {
+                    Task<Void> t = new Task<>() {
+                        @Override protected Void call() throws Exception { httpClient.respondToInbox(item.id(), false).get(); return null; }
+                    };
+                    t.setOnSucceeded(s -> showInboxView());
+                    new Thread(t).start();
+                });
+                
+                row.getChildren().addAll(info, spacer, accept, reject);
+                list.getChildren().add(row);
+            }
+            if (list.getChildren().isEmpty()) {
+                list.getChildren().add(new Label("Inbox is empty."));
+            }
+        });
+        new Thread(fetch).start();
+        
+        inbox.getChildren().addAll(title, new ScrollPane(list));
+        mainRoot.setCenter(inbox);
     }
 
 

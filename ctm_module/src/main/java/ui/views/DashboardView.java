@@ -27,13 +27,33 @@ public class DashboardView extends BorderPane {
     private final Button addTaskButton = new Button("+ Add Task");
     private final Button viewTasksButton = new Button("View Tasks");
 
-    public VBox getWorkspaceListContainer() { return workspaceListContainer; }
-    public Button getCreateWorkspaceButton() { return createWorkspaceButton; }
-    public Button getJoinWorkspaceButton() { return joinWorkspaceButton; }
-    public Label getSyncStatusLabel() { return syncStatusLabel; }
-    public ProgressIndicator getSyncSpinner() { return syncSpinner; }
-    public Button getAddTaskButton() { return addTaskButton; }
-    public Button getViewTasksButton() { return viewTasksButton; }
+    public VBox getWorkspaceListContainer() {
+        return workspaceListContainer;
+    }
+
+    public Button getCreateWorkspaceButton() {
+        return createWorkspaceButton;
+    }
+
+    public Button getJoinWorkspaceButton() {
+        return joinWorkspaceButton;
+    }
+
+    public Label getSyncStatusLabel() {
+        return syncStatusLabel;
+    }
+
+    public ProgressIndicator getSyncSpinner() {
+        return syncSpinner;
+    }
+
+    public Button getAddTaskButton() {
+        return addTaskButton;
+    }
+
+    public Button getViewTasksButton() {
+        return viewTasksButton;
+    }
 
     private model.Team team;
 
@@ -49,19 +69,21 @@ public class DashboardView extends BorderPane {
     }
 
     public void refresh() {
+        // Preserve button visibility across refreshes
+        boolean addVisible = addMemberBtn.isVisible();
+        boolean removeVisible = removeMemberBtn.isVisible();
+
         // --- CENTER CONTENT (Scrollable) ---
         VBox centerContent = new VBox(30);
         centerContent.setPadding(new Insets(30));
-        
+
         centerContent.getChildren().addAll(
-            createWelcomeCard(),
-            createTeamHeader(),
-            createTeamMembersSection(),
-            createStatsRow(),
-            createWorkloadAnalysisSection(),
-            createTimelineSection(),
-            createWorkspaceSection()
-        );
+                createWelcomeCard(),
+                createTeamHeader(),
+                createTeamMembersSection(),
+                createStatsRow(),
+                createWorkloadAnalysisSection(),
+                createTimelineSection());
 
         ScrollPane scrollPane = new ScrollPane(centerContent);
         scrollPane.setFitToWidth(true);
@@ -70,6 +92,12 @@ public class DashboardView extends BorderPane {
 
         // --- RIGHT PANEL ---
         setRight(createRightPanel());
+
+        // Restore button visibility
+        addMemberBtn.setVisible(addVisible);
+        addMemberBtn.setManaged(addVisible);
+        removeMemberBtn.setVisible(removeVisible);
+        removeMemberBtn.setManaged(removeVisible);
     }
 
     private final TextField codeField = new TextField("Loading...");
@@ -89,23 +117,31 @@ public class DashboardView extends BorderPane {
     private VBox createTeamHeader() {
         VBox header = new VBox(10);
         header.setPadding(new Insets(30));
-        header.setStyle("-fx-background-color: linear-gradient(to right, #4f46e5, #8b5cf6); -fx-background-radius: 20;");
+        header.setStyle(
+                "-fx-background-color: linear-gradient(to right, #4f46e5, #8b5cf6); -fx-background-radius: 20;");
 
         Label teamName = new Label(team != null ? team.getName().toUpperCase() : "NO TEAM SELECTED");
         teamName.setStyle("-fx-text-fill: white; -fx-font-size: 28px; -fx-font-weight: bold;");
 
-        String ownerInfo = (team != null && team.getOwnerUsername() != null) ? team.getOwnerUsername() : (team != null ? team.getOwnerId() : "Unknown");
-        Label position = new Label("OWNER: " + ownerInfo); 
+        String ownerInfo = (team != null && team.getOwnerUsername() != null) ? team.getOwnerUsername()
+                : (team != null ? team.getOwnerId() : "Unknown");
+        Label position = new Label("OWNER: " + ownerInfo);
         position.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        // Preserve code row state across refreshes
+        boolean wasVisible = teamCodeRow.isVisible();
+        teamCodeRow.getChildren().clear();
 
         Label codeLbl = new Label("Invite Code:");
         codeLbl.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 12px;");
-        
+
         codeField.setEditable(false);
-        codeField.setStyle("-fx-font-family: 'monospace'; -fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;");
-        
+        codeField.setStyle(
+                "-fx-font-family: 'monospace'; -fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-padding: 5 10; -fx-background-radius: 4;");
+
         Button copyBtn = new Button("Copy");
-        copyBtn.setStyle("-fx-background-color: rgba(255,255,255,0.3); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 4;");
+        copyBtn.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.3); -fx-text-fill: white; -fx-cursor: hand; -fx-background-radius: 4;");
         copyBtn.setOnAction(e -> {
             javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
             javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
@@ -115,44 +151,85 @@ public class DashboardView extends BorderPane {
 
         teamCodeRow.getChildren().addAll(codeLbl, codeField, copyBtn);
         teamCodeRow.setAlignment(Pos.CENTER_LEFT);
-        teamCodeRow.setVisible(false);
-        teamCodeRow.setManaged(false);
+        teamCodeRow.setVisible(wasVisible);
+        teamCodeRow.setManaged(wasVisible);
 
         header.getChildren().addAll(teamName, position, teamCodeRow);
         return header;
     }
 
+    private final Button addMemberBtn = new Button("+ Add Member");
+    private final Button removeMemberBtn = new Button("Remove Member");
+
+    public Button getAddMemberBtn() { return addMemberBtn; }
+    public Button getRemoveMemberBtn() { return removeMemberBtn; }
+
     private VBox createTeamMembersSection() {
         VBox section = new VBox(15);
-        section.setStyle("-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+        section.setStyle(
+                "-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+
+        HBox headerRow = new HBox(15);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
 
         Label title = new Label("TEAM MEMBERS");
         title.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-font-size: 14px;");
 
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        addMemberBtn.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 14; -fx-cursor: hand; -fx-font-size: 11px;");
+        removeMemberBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 14; -fx-cursor: hand; -fx-font-size: 11px;");
+
+        headerRow.getChildren().addAll(title, spacer, addMemberBtn, removeMemberBtn);
+
         HBox membersBox = new HBox(15);
         membersBox.setAlignment(Pos.CENTER_LEFT);
+        membersBox.setPadding(new Insets(10, 0, 0, 0));
+
+        String[] avatarColors = {"#4f46e5", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899"};
 
         if (team != null && team.getMembers() != null) {
+            int colorIdx = 0;
             for (String member : team.getMembers()) {
+                String displayName = member.contains("@") ? member.split("@")[0] : member;
+                String initials = displayName.length() >= 2
+                        ? displayName.substring(0, 2).toUpperCase()
+                        : displayName.toUpperCase();
+                String bgColor = avatarColors[colorIdx % avatarColors.length];
+                colorIdx++;
+
                 VBox m = new VBox(5);
                 m.setAlignment(Pos.CENTER);
-                Region avatar = new Region();
-                avatar.setPrefSize(40, 40);
-                avatar.setStyle("-fx-background-color: #f3f4f6; -fx-background-radius: 20; -fx-border-color: #e5e7eb; -fx-border-radius: 20;");
-                Label name = new Label(member.contains("@") ? member.split("@")[0] : member);
-                name.setStyle("-fx-font-size: 10px; -fx-text-fill: #6b7280;");
-                m.getChildren().addAll(avatar, name);
+
+                StackPane avatarPane = new StackPane();
+                avatarPane.setPrefSize(44, 44);
+                avatarPane.setMaxSize(44, 44);
+                avatarPane.setMinSize(44, 44);
+                avatarPane.setStyle("-fx-background-color: " + bgColor + "; -fx-background-radius: 22;");
+
+                Label initialsLbl = new Label(initials);
+                initialsLbl.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
+                avatarPane.getChildren().add(initialsLbl);
+
+                Label name = new Label(displayName);
+                name.setStyle("-fx-font-size: 11px; -fx-text-fill: #374151; -fx-font-weight: bold;");
+                name.setMaxWidth(70);
+                name.setAlignment(Pos.CENTER);
+
+                m.getChildren().addAll(avatarPane, name);
                 membersBox.getChildren().add(m);
             }
         }
 
-        section.getChildren().addAll(title, membersBox);
+        section.getChildren().addAll(headerRow, membersBox);
         return section;
     }
 
     private VBox createTimelineSection() {
         VBox section = new VBox(15);
-        section.setStyle("-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+        section.setStyle(
+                "-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
 
         Label title = new Label("TEAM TIMELINE (RECENT ACTIVITY)");
         title.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-font-size: 14px;");
@@ -160,14 +237,16 @@ public class DashboardView extends BorderPane {
         VBox list = new VBox(10);
         int count = 0;
         for (Task t : taskList) {
-            if (count >= 5) break;
+            if (count >= 5)
+                break;
             Label item = new Label("• " + t.getTitle() + " - " + t.getStatus() + " (" + t.getDeadline() + ")");
             item.setStyle("-fx-text-fill: #4b5563; -fx-font-size: 13px;");
             list.getChildren().add(item);
             count++;
         }
 
-        if (count == 0) list.getChildren().add(new Label("No recent activity."));
+        if (count == 0)
+            list.getChildren().add(new Label("No recent activity."));
 
         section.getChildren().addAll(title, list);
         return section;
@@ -185,14 +264,15 @@ public class DashboardView extends BorderPane {
         TextField searchField = new TextField();
         searchField.setPromptText("Search anything...");
         searchField.setPrefWidth(300);
-        searchField.setStyle("-fx-background-color: #f5f6fa; -fx-background-radius: 10; -fx-padding: 10 15; -fx-border-color: transparent;");
+        searchField.setStyle(
+                "-fx-background-color: #f5f6fa; -fx-background-radius: 10; -fx-padding: 10 15; -fx-border-color: transparent;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label dateLabel = new Label("March 2021");
         dateLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937;");
-        
+
         Button dateSelector = new Button("📅");
         dateSelector.setStyle("-fx-background-color: #f5f6fa; -fx-background-radius: 8; -fx-padding: 8;");
 
@@ -207,60 +287,65 @@ public class DashboardView extends BorderPane {
     private VBox createWelcomeCard() {
         VBox welcome = new VBox(15);
         welcome.getStyleClass().add("welcome-card");
-        
+
         String username = utils.UserSession.getCurrentUserName();
         Label title = new Label("Welcome back, " + username);
         title.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold;");
-        
+
         long pending = getCount("DEADLINE") + getCount("IN_PROGRESS");
         Label sub = new Label("You have " + pending + " tasks remaining. Keep pushing forward!");
         sub.setStyle("-fx-text-fill: rgba(255,255,255,0.8); -fx-font-size: 14px;");
-        
-        viewTasksButton.setStyle("-fx-background-color: white; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25;");
-        addTaskButton.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25; -fx-border-color: white; -fx-border-radius: 10;");
+
+        viewTasksButton.setStyle(
+                "-fx-background-color: white; -fx-text-fill: #4f46e5; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25;");
+        addTaskButton.setStyle(
+                "-fx-background-color: rgba(255,255,255,0.2); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 25; -fx-border-color: white; -fx-border-radius: 10;");
 
         HBox actions = new HBox(15, viewTasksButton, addTaskButton);
-        
+
         welcome.getChildren().addAll(title, sub, actions);
         return welcome;
     }
 
     private VBox createWorkspaceSection() {
         VBox section = new VBox(15);
-        
+
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
         Label title = new Label("Your Workspaces");
         title.setStyle("-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;");
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
-        joinWorkspaceButton.setStyle("-fx-background-color: #30363d; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
-        createWorkspaceButton.setStyle("-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
-        
+
+        joinWorkspaceButton.setStyle(
+                "-fx-background-color: #30363d; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+        createWorkspaceButton.setStyle(
+                "-fx-background-color: #4f46e5; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 5;");
+
         HBox buttons = new HBox(10, joinWorkspaceButton, createWorkspaceButton);
         buttons.setAlignment(Pos.CENTER_RIGHT);
-        
+
         header.getChildren().addAll(title, spacer, buttons);
-        
+
         section.getChildren().addAll(header, workspaceListContainer);
         return section;
     }
 
     public VBox createWorkspaceCard(String name, String ownerUserId, String lastSynced) {
         VBox card = new VBox(5);
-        card.setStyle("-fx-background-color: #161b22; -fx-background-radius: 12; -fx-border-color: #30363d; -fx-border-width: 1; -fx-padding: 15; -fx-cursor: hand;");
-        
+        card.setStyle(
+                "-fx-background-color: #161b22; -fx-background-radius: 12; -fx-border-color: #30363d; -fx-border-width: 1; -fx-padding: 15; -fx-cursor: hand;");
+
         Label nameLbl = new Label(name);
         nameLbl.setStyle("-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold;");
-        
+
         Label ownerLbl = new Label("Owner: " + ownerUserId);
         ownerLbl.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 12px;");
-        
+
         Label syncLbl = new Label("Last Synced: " + lastSynced);
         syncLbl.setStyle("-fx-text-fill: #8b949e; -fx-font-size: 11px;");
-        
+
         card.getChildren().addAll(nameLbl, ownerLbl, syncLbl);
         return card;
     }
@@ -268,34 +353,34 @@ public class DashboardView extends BorderPane {
     private HBox createStatsRow() {
         HBox row = new HBox(20);
         row.getChildren().addAll(
-            new StatCard("Total Tasks", String.valueOf(taskList.size()), "#4f46e5"),
-            new StatCard("In Progress", String.valueOf(getCount("IN_PROGRESS")), "#f59e0b"),
-            new StatCard("Pending", String.valueOf(getCount("DEADLINE")), "#8b5cf6"),
-            new StatCard("Completed", String.valueOf(getCount("DONE")), "#10b981")
-        );
+                new StatCard("Total Tasks", String.valueOf(taskList.size()), "#4f46e5"),
+                new StatCard("In Progress", String.valueOf(getCount("IN_PROGRESS")), "#f59e0b"),
+                new StatCard("Pending", String.valueOf(getCount("DEADLINE")), "#8b5cf6"),
+                new StatCard("Completed", String.valueOf(getCount("DONE")), "#10b981"));
         return row;
     }
 
     private VBox createWorkloadAnalysisSection() {
         VBox section = new VBox(20);
-        section.setStyle("-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
-        
+        section.setStyle(
+                "-fx-background-color: white; -fx-padding: 25; -fx-background-radius: 15; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);");
+
         Label title = new Label("WORKLOAD ANALYSIS");
         title.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937; -fx-font-size: 14px;");
-        
+
         long high = taskList.stream().filter(t -> "High".equalsIgnoreCase(t.getPriority())).count();
         long medium = taskList.stream().filter(t -> "Medium".equalsIgnoreCase(t.getPriority())).count();
         long low = taskList.stream().filter(t -> "Low".equalsIgnoreCase(t.getPriority())).count();
-        
+
         HBox stats = new HBox(60);
         stats.setAlignment(Pos.CENTER_LEFT);
         stats.getChildren().addAll(
-            createWorkloadItem("HIGH PRIORITY", high, "#ef4444"),
-            createWorkloadItem("MEDIUM PRIORITY", medium, "#f59e0b"),
-            createWorkloadItem("LOW PRIORITY", low, "#10b981"),
-            createWorkloadItem("TOTAL ACTIVE", taskList.stream().filter(t -> !"DONE".equals(t.getStatus())).count(), "#4f46e5")
-        );
-        
+                createWorkloadItem("HIGH PRIORITY", high, "#ef4444"),
+                createWorkloadItem("MEDIUM PRIORITY", medium, "#f59e0b"),
+                createWorkloadItem("LOW PRIORITY", low, "#10b981"),
+                createWorkloadItem("TOTAL ACTIVE", taskList.stream().filter(t -> !"DONE".equals(t.getStatus())).count(),
+                        "#4f46e5"));
+
         section.getChildren().addAll(title, stats);
         return section;
     }
@@ -314,21 +399,22 @@ public class DashboardView extends BorderPane {
         VBox section = new VBox(20);
         Label title = new Label("Recent Tasks");
         title.getStyleClass().add("text-title");
-        
+
         HBox row = new HBox(20);
-        
+
         int count = 0;
         for (Task t : taskList) {
-            if (count >= 3) break;
+            if (count >= 3)
+                break;
             double progress = "DONE".equals(t.getStatus()) ? 1.0 : ("IN_PROGRESS".equals(t.getStatus()) ? 0.5 : 0.0);
             row.getChildren().add(createProgressCard(t.getTitle(), progress, "Start", t.getDeadline()));
             count++;
         }
-        
+
         if (count == 0) {
             row.getChildren().add(new Label("No tasks found. Add a new task to get started!"));
         }
-        
+
         section.getChildren().addAll(title, row);
         return section;
     }
@@ -337,15 +423,15 @@ public class DashboardView extends BorderPane {
         VBox card = new VBox(12);
         card.getStyleClass().add("dashboard-card");
         card.setPrefWidth(280);
-        
+
         Label nLabel = new Label(name);
         nLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937;");
-        
+
         ProgressBar bar = new ProgressBar(progress);
         bar.setMaxWidth(Double.MAX_VALUE);
         bar.setPrefHeight(8);
         bar.setStyle("-fx-accent: #4f46e5;");
-        
+
         HBox dates = new HBox();
         Label sLabel = new Label(start);
         Label eLabel = new Label(end);
@@ -354,7 +440,7 @@ public class DashboardView extends BorderPane {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         dates.getChildren().addAll(sLabel, spacer, eLabel);
-        
+
         card.getChildren().addAll(nLabel, bar, dates);
         return card;
     }
@@ -365,19 +451,65 @@ public class DashboardView extends BorderPane {
         panel.setPadding(new Insets(30));
         panel.setStyle("-fx-background-color: white; -fx-border-color: #e1e4e8; -fx-border-width: 0 0 0 1;");
 
-        // Simple Calendar Placeholder
+        // Mini Calendar - current month with task indicators
         VBox calendar = new VBox(15);
-        Label calTitle = new Label("Calendar");
+        Label calTitle = new Label(LocalDate.now().getMonth().toString() + " " + LocalDate.now().getYear());
         calTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937;");
-        
+
+        // Collect task deadline days for current month
+        java.util.Set<Integer> taskDays = new java.util.HashSet<>();
+        for (Task t : taskList) {
+            try {
+                LocalDate d = LocalDate.parse(t.getDeadline());
+                if (d.getMonth() == LocalDate.now().getMonth() && d.getYear() == LocalDate.now().getYear()) {
+                    taskDays.add(d.getDayOfMonth());
+                }
+            } catch (Exception ignored) {}
+        }
+
         GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
-        for (int i = 1; i <= 31; i++) {
+        grid.setHgap(6); grid.setVgap(6);
+        String[] dayHeaders = {"S","M","T","W","T","F","S"};
+        for (int i = 0; i < 7; i++) {
+            Label h = new Label(dayHeaders[i]);
+            h.setAlignment(Pos.CENTER);
+            h.setPrefSize(30, 20);
+            h.setStyle("-fx-text-fill: #9ca3af; -fx-font-weight: bold; -fx-font-size: 10px;");
+            grid.add(h, i, 0);
+        }
+
+        LocalDate firstOfMonth = LocalDate.now().withDayOfMonth(1);
+        int startCol = firstOfMonth.getDayOfWeek().getValue() % 7;
+        int daysInMonth = firstOfMonth.lengthOfMonth();
+        int today = LocalDate.now().getDayOfMonth();
+
+        for (int i = 1; i <= daysInMonth; i++) {
+            VBox dayCell = new VBox(1);
+            dayCell.setAlignment(Pos.CENTER);
+            dayCell.setPrefSize(30, 30);
+
             Label day = new Label(String.valueOf(i));
             day.setAlignment(Pos.CENTER);
-            day.setPrefSize(30, 30);
-            day.setStyle("-fx-background-color: #f5f6fa; -fx-background-radius: 5; -fx-font-size: 11px;");
-            grid.add(day, (i-1)%7, (i-1)/7);
+
+            boolean isToday = (i == today);
+            boolean hasTask = taskDays.contains(i);
+
+            String bg = isToday ? "#4f46e5" : "#f5f6fa";
+            String fg = isToday ? "white" : "#1f2937";
+            day.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 15; -fx-font-size: 11px; -fx-text-fill: " + fg + "; -fx-min-width: 28; -fx-min-height: 28; -fx-alignment: center;");
+            dayCell.getChildren().add(day);
+
+            if (hasTask) {
+                Region dot = new Region();
+                dot.setPrefSize(4, 4);
+                dot.setMaxSize(4, 4);
+                dot.setStyle("-fx-background-color: #ef4444; -fx-background-radius: 2;");
+                dayCell.getChildren().add(dot);
+            }
+
+            int col = (i - 1 + startCol) % 7;
+            int row = (i - 1 + startCol) / 7 + 1;
+            grid.add(dayCell, col, row);
         }
         calendar.getChildren().addAll(calTitle, grid);
 
@@ -385,21 +517,25 @@ public class DashboardView extends BorderPane {
         VBox upcoming = new VBox(15);
         Label upTitle = new Label("Upcoming Schedule");
         upTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #1f2937;");
-        
+
         VBox list = new VBox(10);
         int scheduled = 0;
         for (Task t : taskList) {
-            if (scheduled >= 5) break;
-            if ("DONE".equals(t.getStatus())) continue;
-            
+            if (scheduled >= 5)
+                break;
+            if ("DONE".equals(t.getStatus()))
+                continue;
+
             String color = "#4f46e5"; // Default
-            if (t.getDeadline().equals(LocalDate.now().toString())) color = "#ef4444";
-            else if ("IN_PROGRESS".equals(t.getStatus())) color = "#f59e0b";
+            if (t.getDeadline().equals(LocalDate.now().toString()))
+                color = "#ef4444";
+            else if ("IN_PROGRESS".equals(t.getStatus()))
+                color = "#f59e0b";
 
             list.getChildren().add(createScheduleItem(t.getTitle(), t.getDeadline(), color));
             scheduled++;
         }
-        
+
         if (scheduled == 0) {
             list.getChildren().add(new Label("No upcoming tasks."));
         }
@@ -414,17 +550,17 @@ public class DashboardView extends BorderPane {
         item.setAlignment(Pos.CENTER_LEFT);
         item.setPadding(new Insets(10));
         item.setStyle("-fx-background-color: #f9fafb; -fx-background-radius: 12;");
-        
+
         Region dot = new Region();
         dot.setPrefSize(8, 8);
         dot.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 4;");
-        
+
         VBox text = new VBox(2);
         Label tLbl = new Label(title);
         tLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1f2937;");
         Label timLbl = new Label(time);
         timLbl.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 11px;");
-        
+
         text.getChildren().addAll(tLbl, timLbl);
         item.getChildren().addAll(dot, text);
         return item;

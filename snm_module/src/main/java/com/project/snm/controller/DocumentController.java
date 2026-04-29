@@ -111,13 +111,16 @@ public class DocumentController {
     }
 
     @GetMapping("/teams/{teamId}/documents")
-    public ResponseEntity<List<DocumentVersionResponse>> getTeamDocuments(@PathVariable String teamId) {
+    public ResponseEntity<List<Map<String, Object>>> getTeamDocuments(@PathVariable String teamId) {
         List<DocumentVersion> latests = documentVersionRepository.findLatestVersionsByTeamId(teamId);
         
-        List<DocumentVersionResponse> responses = latests.stream()
+        List<Map<String, Object>> responses = latests.stream()
                 .map(v -> {
                     try {
-                        return mapToResponse(v);
+                        Map<String, Object> docMap = new HashMap<>();
+                        docMap.put("id", v.getDocumentUuid());
+                        docMap.put("latestPayload", mapToResponse(v));
+                        return docMap;
                     } catch (tools.jackson.core.JacksonException e) {
                         throw new RuntimeException(e);
                     }
