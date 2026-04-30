@@ -22,9 +22,27 @@ public class TaskService {
     }
 
     public List<Task> getAllTasks(String userId, String teamId) {
-        // Fetch metadata and decrypt each document.
-        // Call synchronously as TaskService is called from background tasks in UI.
-        return encryptedTaskService.getAllTasksForTeam(teamId, session);
+        // Fetch remote tasks first
+        List<Task> remoteTasks = encryptedTaskService.getAllTasksForTeam(teamId, session);
+        
+        // Overlay local dirty tasks to ensure immediate UI feedback after actions
+        List<String> dirtyUuids = localCache.getDirtyDocumentUuids();
+
+        for (String uuid : dirtyUuids) {
+            if (teamId.equals(localCache.getTeamId(uuid))) {
+                localCache.getDocument(uuid).ifPresent(payload -> {
+                    try {
+                        Task localTask = encryptedTaskService.loadTask(uuid, teamId, payload);
+                        localTask.setCurrentVersionSeq(payload.versionSeq());
+                        
+                        // Replace or add to the list
+                        remoteTasks.removeIf(t -> t.getId().equals(uuid));
+                        remoteTasks.add(localTask);
+                    } catch (Exception ignored) {}
+                });
+            }
+        }
+        return remoteTasks;
     }
 
     public void addTask(Task t) {
