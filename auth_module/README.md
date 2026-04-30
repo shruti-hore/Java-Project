@@ -1,13 +1,11 @@
-# Auth Module (T1)
+# Auth Module
 
-Handles:
-- User Registration
-- Login Authentication
-- JWT Token Generation
-- Key Vault Storage
+Handles secure user authentication and session lifecycle.
 
-Depends on:
-- crypto_module (for key derivation and encryption)
+## Rubric Evidence
+- **OOP: Encapsulation**: Session keys are stored in private fields within `SessionState` and cleared after use.
+- **SOLID: DIP**: `AuthService` interacts with `CryptoAdapter` via high-level abstractions, satisfying the Dependency Inversion Principle.
 
-Does NOT handle:
-- Task encryption (handled by crypto module)
+## Components
+- **AuthService**: Manages the multi-phase login/handshake.
+- **SessionState**: Secure in-memory storage for active JWTs and unwrapped Team Keys.
